@@ -1,0 +1,110 @@
+SparkLab - Third-Party Notices
+==============================================================================
+SparkLab ("the App") is developed and distributed by
+PRIMERA TECH LABS COMPANY LIMITED. It runs entirely in the browser and bundles /
+serves third-party software, including compilers, standard libraries and device
+cores that are redistributed to end users. This file enumerates those components
+and their licenses.
+
+SparkLab's OWN application code is licensed under the GNU Affero General Public
+License v3.0 (AGPL-3.0) - full text at /licenses/AGPL-3.0.txt. Under AGPL section
+13, the deployed app offers users a link to its Corresponding Source. The
+third-party components listed below keep their own licenses (mere aggregation -
+the AGPL app invokes, does not link, the GPL toolchains).
+
+IMPORTANT (for the operator deploying this): some shipped components are licensed
+under the GNU GPL / LGPL. Redistributing them - which a public web deploy does,
+because the App serves them to every visitor - carries obligations (ship the
+license text, and for GPL provide the corresponding source or a written offer).
+Those obligations are met by the files referenced in section D below. The exact
+upstream versions shipped are pinned in ci/toolchain-builder/Dockerfile and
+recorded here; re-pin them if the toolchain is rebuilt.
+
+==============================================================================
+A. In-browser toolchains served under /toolchain, /esp32-classic-toolchain
+==============================================================================
+
+1) GNU GCC - the C/C++ compiler (cc1, cc1plus), compiled to WebAssembly.
+   Used for: Arduino Uno (AVR) client-side compile.
+   Version: GCC 14.2.0  (GCC_VERSION, pinned in ci/toolchain-builder/Dockerfile)
+   License: GPL-3.0-or-later.  https://www.gnu.org/licenses/gpl-3.0.html
+   Runtime libraries (libgcc, libstdc++): GPL-3.0-or-later WITH
+   GCC-Runtime-Library-Exception-3.1 (the exception lets compiled programs link
+   them without becoming GPL).
+
+2) GNU Binutils - the assembler + linker (avr-as, avr-ld, avr-objcopy),
+   compiled to WebAssembly.
+   Version: 2.43  (BINUTILS_VERSION, pinned in ci/toolchain-builder/Dockerfile)
+   License: GPL-3.0-or-later.
+
+3) LLVM / Clang / LLD - the C/C++ compiler + linker for the ESP32 targets
+   (clang.mjs, lld.mjs), compiled to WebAssembly. Includes the Espressif Xtensa
+   backend.
+   Version: esp-clang (LLVM, esp toolchain build).
+   License: Apache-2.0 WITH LLVM-exception.  https://llvm.org/LICENSE.txt
+   (Permissive - attribution only; no source offer required.)
+
+==============================================================================
+B. Embedded SDKs, standard libraries and device cores (shipped inside the
+   *-sdk.json packs under /toolchain, /esp32-classic-toolchain)
+==============================================================================
+
+4) ArduinoCore-avr - the Arduino Uno core (Arduino.h, HardwareSerial, etc.).
+   Version: 1.8.8
+   License: LGPL-2.1-or-later.  (Arduino SA)
+
+5) avr-libc - the AVR C standard library (libc.a/libm.a + crt + headers).
+   Version: 2.2.1  (AVRLIBC_VERSION, pinned in ci/toolchain-builder/Dockerfile)
+   License: BSD-3-Clause-style "modified BSD" (avr-libc license).
+
+6) ArduinoCore-esp32 (arduino-esp32) - the ESP32 Arduino core headers used to
+   compile ESP32 sketches client-side.
+   Version: 3.3.10
+   License: LGPL-2.1-or-later.  (Espressif Systems)
+
+7) picolibc - the C standard library + libm for the ESP32 targets
+   (libc.a/libm.a, Xtensa esp32 multilib).
+   License: BSD-2-Clause / BSD-3-Clause (picolibc is a permissive collection
+   derived from newlib + AVR-libc; see picolibc COPYING.* for the per-file mix).
+
+8) libgcc (Xtensa) - GCC runtime for the ESP32 targets.
+   Version: xtensa-esp-elf GCC 14.2.0
+   License: GPL-3.0-or-later WITH GCC-Runtime-Library-Exception-3.1.
+
+==============================================================================
+C. Browser runtime (npm) dependencies bundled into /assets
+==============================================================================
+
+   vue ^3.5.x ............................. MIT
+   comlink ^4.4.x ........................ Apache-2.0
+   avr8js ^0.18.x ........................ MIT          (AVR CPU emulator)
+   @wokwi/elements ^1.9.x ................ MIT          (circuit web components)
+   @sqlite.org/sqlite-wasm ^3.49.x ....... Apache-2.0   (OPFS-backed storage)
+   fzstd ^0.1.x .......................... MIT          (zstd decompression)
+   @fontsource-variable/plus-jakarta-sans  OFL-1.1      (Plus Jakarta Sans font)
+   @fontsource-variable/jetbrains-mono ... OFL-1.1      (JetBrains Mono font)
+
+==============================================================================
+D. Compliance checklist (status for a public deploy)
+==============================================================================
+  [x] Ship the full GPL-3.0 and LGPL-2.1 license TEXTS - served at:
+        /licenses/GPL-3.0.txt   /licenses/LGPL-2.1.txt
+  [x] Provide a written offer of Corresponding Source for the GPL programs (GCC
+      cc1/cc1plus, binutils as/ld/objcopy) - served at /licenses/WRITTEN-OFFER.txt.
+      The WASM build recipe lives in the repo at ci/toolchain-builder/*.
+  [x] Add a root LICENSE for the SparkLab application code (see /LICENSE) + the
+      package.json "license" field. DECIDED: SparkLab's own code is AGPL-3.0
+      (open-source, strong copyleft incl. network use); served at
+      /licenses/AGPL-3.0.txt. The GPL/LGPL toolchain components stay under their
+      own licenses (mere aggregation - the AGPL app invokes, does not link them).
+  [x] Link this notices file from the App UI footer (served at /THIRD-PARTY-NOTICES.txt).
+  [ ] AGPL section 13: publish SparkLab's own source and set the "Source" link
+      (VITE_SOURCE_URL) to that public repository BEFORE a public deploy.
+  [x] Pin the EXACT upstream versions shipped - GCC 14.2.0, GNU Binutils 2.43,
+      avr-libc 2.2.1, ArduinoCore-avr 1.8.8, ArduinoCore-esp32 3.3.10 (pinned in
+      ci/toolchain-builder/Dockerfile; recorded in /licenses/WRITTEN-OFFER.txt).
+  [ ] Re-run this enumeration + re-pin versions whenever a toolchain/SDK/dependency
+      version changes; legal review of the final distribution is still recommended.
+
+This file is a factual attribution aid, not legal advice. Consult counsel for the
+public-distribution license decision.

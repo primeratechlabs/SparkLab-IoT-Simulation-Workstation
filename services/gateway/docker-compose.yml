@@ -1,0 +1,15 @@
+# Sparklab Tier-3 gateway. `docker compose up -d` after copying .env.example → .env.
+# Put a TLS-terminating reverse proxy (Caddy/nginx/Traefik) in front so the browser uses wss://.
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - '127.0.0.1:9000:9000' # bind to localhost; the reverse proxy publishes it over TLS
+    # Hardening: no new privileges, read-only fs (the relay writes nothing to disk).
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    cap_drop:
+      - ALL

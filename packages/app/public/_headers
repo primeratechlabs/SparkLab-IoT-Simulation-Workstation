@@ -1,0 +1,19 @@
+# Static-host headers (Netlify / Cloudflare Pages). Vite copies public/ → dist/, so a static deploy
+# of dist/ serves these instead of NO security headers (which silently drops crossOriginIsolated →
+# SharedArrayBuffer / threaded WASM / OPFS break). Rules are additive: the /* security headers apply
+# to /assets/* and /toolchain/* too; the specific blocks only add cache rules.
+# KEEP IN SYNC with packages/app/headers.config.mjs (guarded by deploy-headers.test.ts).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/toolchain/*
+  Cache-Control: public, max-age=604800
+
+/esp32-classic-toolchain/*
+  Cache-Control: public, max-age=604800

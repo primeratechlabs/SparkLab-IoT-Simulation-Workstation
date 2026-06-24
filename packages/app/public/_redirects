@@ -1,0 +1,5 @@
+# SPA deep-link fallback (Netlify / Cloudflare Pages). Static hosts serve a real file when one
+# exists; only otherwise-404 routes (e.g. a refresh on /?view=labs, or any client route) fall back to
+# index.html with a 200. A missing /toolchain/*.mjs still 404s (it has a file extension + a real path
+# under /toolchain), so a broken toolchain ship is never masked as HTML.
+/*    /index.html   200

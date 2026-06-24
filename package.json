@@ -1,0 +1,53 @@
+{
+  "name": "sparklab",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Sparklab — Chromium-native IoT simulation workstation (client-side firmware build + MCU emulation + circuit simulation).",
+  "type": "module",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "scripts": {
+    "dev": "pnpm --filter @sparklab/app dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "fixtures": "node scripts/make-sample-pack.mjs",
+    "toolchain-fixtures": "node scripts/make-toolchain-fixtures.mjs",
+    "c3-fixtures": "node scripts/make-c3-fixtures.mjs",
+    "esp32-classic-fixtures": "node scripts/make-esp32-classic-fixtures.mjs",
+    "build:deploy": "bash scripts/build-deploy.sh",
+    "serve": "node packages/app/server.mjs",
+    "verify:deploy": "node scripts/verify-deploy.mjs"
+  },
+  "devDependencies": {
+    "@bokuweb/zstd-wasm": "^0.0.27",
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "eslint": "^9.17.0",
+    "eslint-plugin-vue": "^10.9.2",
+    "prettier": "^3.4.2",
+    "tsx": "^4.22.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^2.2.0"
+  },
+  "dependencies": {}
+}

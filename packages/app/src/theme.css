@@ -1,0 +1,129 @@
+/**
+ * Mạch Ảo — design tokens. Warm-paper palette,
+ * Plus Jakarta Sans + JetBrains Mono (self-hosted via @fontsource-variable; no CDN — invariant:
+ * self-host assets). Components consume these vars so the look stays consistent + tweakable.
+ */
+:root {
+  /* surfaces */
+  --bg: #e9e4db;
+  --panel: #ffffff;
+  --panel-2: #fbfaf7;
+  --panel-3: #fdfcf9;
+  --dark: #211e1a;
+  --dark-2: #2e2a25;
+  --dark-ink: #ede9e0;
+
+  /* ink */
+  --ink: #2a2722;
+  --ink-2: #4a453d;
+  --ink-soft: #7c756a;
+  --ink-muted: #8a8276;
+  --ink-faint: #b7ae9f;
+  --ink-faintest: #c7bfaf;
+
+  /* lines */
+  --line: #e7e1d6;
+  --line-2: #ece6db;
+  --line-3: #f0ebe2;
+
+  /* accent — terracotta */
+  --accent: #e8744a;
+  --accent-ink: #c25e36;
+  --accent-bg: #fbf3ec;
+  --accent-line: #f1d9c9;
+
+  /* green — run/ready */
+  --green: #3fa36b;
+  --green-ink: #3f8c5e;
+  --green-bg: #eaf4ee;
+  --green-line: #cbe6d6;
+
+  /* blue / amber / red */
+  --blue: #3e7bd6;
+  --amber: #e0a52e;
+  --amber-ink: #c99a33;
+  --red: #d7503b;
+  --red-ink: #c0452f;
+  --red-bg: #fbeae6;
+  --red-line: #f0c9c0;
+
+  /* radii + shadow */
+  --r-card: 15px;
+  --r-lg: 18px;
+  --r-ctrl: 10px;
+  --r-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(40, 35, 28, 0.04), 0 8px 20px rgba(40, 35, 28, 0.04);
+  --shadow-pop: 0 16px 36px rgba(40, 35, 28, 0.16);
+
+  --font-sans: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  height: 100%;
+}
+
+@keyframes ledblink {
+  0%,
+  46% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.05;
+  }
+}
+@keyframes pulsedot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes caret {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d1c4;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

@@ -1,0 +1,51 @@
+SparkLab - Written Offer for Corresponding Source (GPL / LGPL components)
+==============================================================================
+SparkLab (by PRIMERA TECH LABS COMPANY LIMITED) redistributes, to everyone who
+uses this website, certain programs and libraries licensed under the GNU GPL-3.0
+and LGPL-2.1, compiled to WebAssembly and served from this site:
+
+  * GNU GCC          - the C/C++ compiler (cc1, cc1plus)             GPL-3.0-or-later
+  * GNU Binutils     - the assembler + linker (as, ld, objcopy)     GPL-3.0-or-later
+  * libgcc, libstdc++ (GCC runtime)                                 GPL-3.0 WITH GCC-RLE
+  * ArduinoCore-avr, ArduinoCore-esp32                              LGPL-2.1-or-later
+
+The full license texts are provided alongside this file:
+  ./GPL-3.0.txt     (GNU General Public License, version 3)
+  ./LGPL-2.1.txt    (GNU Lesser General Public License, version 2.1)
+
+WRITTEN OFFER (valid for the components above)
+----------------------------------------------
+For at least three (3) years from the date you received these programs from this
+site, PRIMERA TECH LABS COMPANY LIMITED will give any third party, for a charge no
+more than our cost of physically performing source distribution, a complete
+machine-readable copy of the Corresponding Source for the exact versions of GCC
+and GNU Binutils (and the LGPL Arduino cores) distributed here - including the
+WebAssembly cross-build recipe used to produce them. Request it from:
+
+  Email: contact@primeralabs.vn   (PRIMERA TECH LABS COMPANY LIMITED)
+
+VERSIONS DISTRIBUTED  (pinned from ci/toolchain-builder/Dockerfile)
+-------------------------------------------------------------------
+  GCC (AVR cc1/cc1plus):                                 14.2.0    (GCC_VERSION)
+  GNU Binutils (avr-as/avr-ld/avr-objcopy):              2.43      (BINUTILS_VERSION)
+  avr-libc:                                              2.2.1     (AVRLIBC_VERSION)
+  ArduinoCore-avr:                                       1.8.8
+  ArduinoCore-esp32:                                     3.3.10
+  xtensa-esp-elf GCC (libgcc, ESP32 multilib):           14.2.0
+  LLVM/Clang/LLD (ESP32 compile/link):                   esp-clang build
+                                                         (Apache-2.0-WITH-LLVM-exception -
+                                                          permissive; attribution only, no
+                                                          source offer required)
+
+These are produced by the build recipe in the repository under:
+  ci/toolchain-builder/   (Dockerfile pins the ENV versions above; build-avr-gcc.sh,
+                           build-avr-binutils.sh, build-all.sh, esp32/, esp32-classic/
+                           - the WASM cross-build steps)
+
+NOTE: these versions are pinned in ci/toolchain-builder/Dockerfile. If you rebuild with
+different GCC_VERSION / BINUTILS_VERSION, update this table to match the binaries actually
+served - the Corresponding Source must correspond to the shipped binaries.
+
+Mere aggregation: SparkLab's own application code is a separate work that merely
+invokes these programs (it is not a derivative of them); see THIRD-PARTY-NOTICES.txt
+at the site root for the full component + license inventory.

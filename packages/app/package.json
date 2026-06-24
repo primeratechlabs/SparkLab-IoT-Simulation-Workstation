@@ -1,0 +1,46 @@
+{
+  "name": "@sparklab/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "node server.mjs",
+    "test": "vitest run",
+    "check:selfhost": "node scripts/check-dist-selfhost.mjs",
+    "check:src": "node scripts/check-src-no-cdn.mjs",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.1.1",
+    "@fontsource-variable/plus-jakarta-sans": "^5.1.1",
+    "@sparklab/build-orchestrator": "workspace:*",
+    "@sparklab/capability": "workspace:*",
+    "@sparklab/circuit": "workspace:*",
+    "@sparklab/emulators": "workspace:*",
+    "@sparklab/image-packer": "workspace:*",
+    "@sparklab/network-shim": "workspace:*",
+    "@sparklab/opfs": "workspace:*",
+    "@sparklab/pack-manager": "workspace:*",
+    "@sparklab/peripheral-bridge": "workspace:*",
+    "@sparklab/schematic": "workspace:*",
+    "@sparklab/shared": "workspace:*",
+    "@sparklab/toolchain-loader": "workspace:*",
+    "@sparklab/workbench": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "^3.49.1-build2",
+    "@wokwi/elements": "^1.9.2",
+    "comlink": "^4.4.2",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^15.11.7",
+    "vite": "^6.0.7",
+    "vite-plugin-pwa": "^1.3.0",
+    "vue-tsc": "^2.2.0",
+    "workbox-window": "^7.4.1"
+  }
+}

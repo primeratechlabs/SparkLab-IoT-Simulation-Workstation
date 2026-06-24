@@ -1,0 +1,26 @@
+{
+  "name": "@sparklab/circuit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sparklab/components-core": "workspace:*",
+    "@sparklab/emulators": "workspace:*",
+    "@sparklab/sim-kernel": "workspace:*",
+    "@sparklab/network-shim": "workspace:*",
+    "avr8js": "^0.18.0",
+    "@sparklab/conformance": "workspace:*"
+  },
+  "devDependencies": {
+    "@sparklab/toolchain-loader": "workspace:*"
+  }
+}
