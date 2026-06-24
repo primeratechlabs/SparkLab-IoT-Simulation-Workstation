@@ -471,3 +471,198 @@ describe('useCircuitCanvas — electrical-topology truth (P1-2/3/4: power/return
     expect(c.controllingDigital(btn)).toBe(13);
   });
 });
+
+describe('useCircuitCanvas — direct breadboard insertion (plug parts into holes, no jumper)', () => {
+  /** A canvas stub whose fake elements expose pins at explicit local pixel offsets (for snap geometry). */
+  function posStub(byCid: Record<string, Array<{ name: string; x: number; y: number }>>) {
+    const mk = (pins: Array<{ name: string; x: number; y: number }>) => ({
+      pinInfo: pins.map((p) => ({ name: p.name, x: p.x, y: p.y, signals: [] })),
+      offsetWidth: 0,
+      offsetHeight: 0,
+      updateComplete: Promise.resolve(),
+      addEventListener: () => {},
+    });
+    return {
+      querySelector: (sel: string) => {
+        const cid = /data-cid="([^"]+)"/.exec(sel)?.[1];
+        return cid && byCid[cid] ? mk(byCid[cid]) : null;
+      },
+      getBoundingClientRect: () => ({
+        left: 0,
+        top: 0,
+        width: 600,
+        height: 340,
+        right: 600,
+        bottom: 340,
+        x: 0,
+        y: 0,
+      }),
+      setPointerCapture: () => {},
+    } as unknown as HTMLElement;
+  }
+  const down = (x: number, y: number, cid: string, c: ReturnType<typeof useCircuitCanvas>) =>
+    c.startDrag({ clientX: x, clientY: y, pointerId: 1 } as unknown as PointerEvent, cid);
+
+  it('holes in the same breadboard column are one net — pins resolve through it with no jumper between them', async () => {
+    const c = useCircuitCanvas(
+      ref(
+        multiStub({
+          __board__: ['13', 'GND.1'],
+          'led-1': ['A', 'C'],
+          'breadboard-2': ['a5', 'c5', 'a7'],
+        }),
+      ),
+    );
+    const led = c.addPart('led', 'wokwi-led');
+    const bb = c.addPart('breadboard', 'sparklab-breadboard');
+    await c.refreshAll();
+    // board pin 13 → hole a5 ; LED anode → hole c5 (SAME column Tcol5, no jumper between a5 and c5)
+    c.clickPin('__board__', '13');
+    c.clickPin(bb, 'a5');
+    c.clickPin(led, 'A');
+    c.clickPin(bb, 'c5');
+    expect(c.resolvePin(led, 'A')?.digital).toBe(13); // the column ties a5 and c5 together
+    // a hole in a DIFFERENT column stays isolated
+    const c2 = useCircuitCanvas(
+      ref(multiStub({ __board__: ['13'], 'led-1': ['A', 'C'], 'breadboard-2': ['a5', 'a7'] })),
+    );
+    const led2 = c2.addPart('led', 'wokwi-led');
+    const bb2 = c2.addPart('breadboard', 'sparklab-breadboard');
+    await c2.refreshAll();
+    c2.clickPin('__board__', '13');
+    c2.clickPin(bb2, 'a5');
+    c2.clickPin(led2, 'A');
+    c2.clickPin(bb2, 'a7'); // Tcol7 ≠ Tcol5
+    expect(c2.resolvePin(led2, 'A')?.digital).toBeUndefined();
+  });
+
+  it('dropping a part with its legs over holes auto-plugs each pin (invisible snap wires)', async () => {
+    const c = useCircuitCanvas(
+      ref(
+        posStub({
+          'breadboard-1': [
+            { name: 'a5', x: 100, y: 50 },
+            { name: 'f5', x: 100, y: 90 }, // bottom half → a different column (Bcol5) from a5 (Tcol5)
+            { name: 'a7', x: 140, y: 50 },
+          ],
+          'led-2': [
+            { name: 'A', x: 0, y: 0 },
+            { name: 'C', x: 0, y: 40 },
+          ],
+        }),
+      ),
+    );
+    const bb = c.addPart('breadboard', 'sparklab-breadboard');
+    const led = c.addPart('led', 'wokwi-led');
+    await c.refreshAll();
+    // seat the breadboard at the origin; hover the LED so A sits on a5 and C on f5
+    Object.assign(c.placed.value.find((p) => p.cid === bb)!, { x: 0, y: 0 });
+    Object.assign(c.placed.value.find((p) => p.cid === led)!, { x: 100, y: 50 });
+    down(100, 50, led, c);
+    c.endDrag(); // snap on drop
+    const snaps = c.wires.value.filter((w) => w.snap);
+    expect(snaps.map((w) => `${w.from.pin}->${w.to.pin}`).sort()).toEqual(['A->a5', 'C->f5']);
+    expect(c.wireCount.value).toBe(0); // snap wires are not counted as jumpers…
+    expect(c.wirePaths.value).toHaveLength(0); // …and are never drawn (the legs just sit in the holes)
+  });
+
+  it('lifting a plugged part unplugs it (snap wires removed on drag), then re-seats on drop', async () => {
+    const c = useCircuitCanvas(
+      ref(
+        posStub({
+          'breadboard-1': [{ name: 'a5', x: 100, y: 50 }],
+          'led-2': [{ name: 'A', x: 0, y: 0 }],
+        }),
+      ),
+    );
+    const bb = c.addPart('breadboard', 'sparklab-breadboard');
+    const led = c.addPart('led', 'wokwi-led');
+    await c.refreshAll();
+    Object.assign(c.placed.value.find((p) => p.cid === bb)!, { x: 0, y: 0 });
+    Object.assign(c.placed.value.find((p) => p.cid === led)!, { x: 100, y: 50 });
+    down(100, 50, led, c);
+    c.endDrag();
+    expect(c.wires.value.filter((w) => w.snap)).toHaveLength(1);
+    down(100, 50, led, c); // picking it up un-seats the pins
+    expect(c.wires.value.filter((w) => w.snap)).toHaveLength(0);
+    c.endDrag(); // still over the hole → re-plugs
+    expect(c.wires.value.filter((w) => w.snap)).toHaveLength(1);
+  });
+
+  it('a hand-drawn jumper to a hole is left alone (not double-connected by a later snap)', async () => {
+    const c = useCircuitCanvas(
+      ref(
+        posStub({
+          'breadboard-1': [{ name: 'a5', x: 100, y: 50 }],
+          'led-2': [{ name: 'A', x: 0, y: 0 }],
+        }),
+      ),
+    );
+    const bb = c.addPart('breadboard', 'sparklab-breadboard');
+    const led = c.addPart('led', 'wokwi-led');
+    await c.refreshAll();
+    Object.assign(c.placed.value.find((p) => p.cid === bb)!, { x: 0, y: 0 });
+    Object.assign(c.placed.value.find((p) => p.cid === led)!, { x: 100, y: 50 });
+    c.clickPin(led, 'A'); // hand-wire A → a5 first
+    c.clickPin(bb, 'a5');
+    down(100, 50, led, c);
+    c.endDrag(); // A is already wired → snap must not add a second connection
+    expect(c.wires.value.filter((w) => w.from.cid === led && w.from.pin === 'A')).toHaveLength(1);
+    expect(c.wires.value.some((w) => w.snap)).toBe(false);
+  });
+
+  it('draws a conduction strip for each in-use column, marked live when it reaches a board signal pin', async () => {
+    const c = useCircuitCanvas(
+      ref(
+        posStub({
+          __board__: [{ name: '13', x: 5, y: 5 }],
+          'led-1': [
+            { name: 'A', x: 0, y: 0 },
+            { name: 'C', x: 0, y: 0 },
+          ],
+          'breadboard-2': [
+            { name: 'a5', x: 100, y: 40 },
+            { name: 'c5', x: 100, y: 60 },
+            { name: 'e5', x: 100, y: 80 }, // all Tcol5 (same column, same x)
+            { name: 'a7', x: 120, y: 40 }, // Tcol7 — left unwired, must NOT get a strip
+          ],
+        }),
+      ),
+    );
+    const led = c.addPart('led', 'wokwi-led');
+    const bb = c.addPart('breadboard', 'sparklab-breadboard');
+    await c.refreshAll();
+    c.clickPin('__board__', '13');
+    c.clickPin(bb, 'a5'); // board pin 13 → column 5
+    c.clickPin(led, 'A');
+    c.clickPin(bb, 'c5'); // LED anode → same column 5 (no jumper between a5 and c5)
+    const strips = c.breadboardStrips.value;
+    expect(strips).toHaveLength(1); // only column 5 is in use
+    expect(strips[0]!.x1).toBe(strips[0]!.x2); // a vertical run down the column
+    expect(strips[0]!.live).toBe(true); // the column reaches board pin 13
+    // an isolated column (no path to a board pin) is drawn but not "live"
+    const c2 = useCircuitCanvas(
+      ref(
+        posStub({
+          'led-1': [
+            { name: 'A', x: 0, y: 0 },
+            { name: 'C', x: 0, y: 0 },
+          ],
+          'breadboard-2': [
+            { name: 'a5', x: 100, y: 40 },
+            { name: 'c5', x: 100, y: 60 },
+          ],
+        }),
+      ),
+    );
+    const led2 = c2.addPart('led', 'wokwi-led');
+    const bb2 = c2.addPart('breadboard', 'sparklab-breadboard');
+    await c2.refreshAll();
+    c2.clickPin(led2, 'A');
+    c2.clickPin(bb2, 'a5');
+    c2.clickPin(led2, 'C');
+    c2.clickPin(bb2, 'c5');
+    expect(c2.breadboardStrips.value).toHaveLength(1);
+    expect(c2.breadboardStrips.value[0]!.live).toBe(false); // no board pin on this column
+  });
+});

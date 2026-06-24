@@ -18,16 +18,19 @@ interface ElementPin {
   signals: unknown[];
 }
 
-const P = 12; // hole pitch (px)
-const LEFT = 16; // left margin to the first column
-const Y_TP = 10; // top "+" rail
-const Y_TN = 22; // top "−" rail
-const Y_A = 44; // first grid row (a)
-const Y_F = 116; // first bottom-half row (f) — the centre channel sits between e and f
-const Y_BP = 188; // bottom "+" rail
-const Y_BN = 200; // bottom "−" rail
+// Hole pitch = @wokwi/elements' component grid (~0.1"), so a part's pins drop straight into the holes when
+// plugged in: a pushbutton spans exactly 7×2 holes, a potentiometer 3, an LED ~1, a resistor ~6. Everything
+// below DERIVES from P, so the board is one consistent standard shared with the components (no rescaling).
+const P = 9.5; // hole pitch (px) — the shared device/breadboard standard
+const LEFT = 13; // left margin to the first column
+const Y_TP = P; // top "+" rail
+const Y_TN = Y_TP + P; // top "−" rail
+const Y_A = Y_TN + 2 * P; // first grid row (a)
+const Y_F = Y_A + 6 * P; // first bottom-half row (f) — a 2·P centre channel sits between rows e and f
+const Y_BP = Y_F + 6 * P; // bottom "+" rail
+const Y_BN = Y_BP + P; // bottom "−" rail
 const WIDTH = LEFT * 2 + (BREADBOARD_COLS - 1) * P;
-const HEIGHT = Y_BN + 12;
+const HEIGHT = Y_BN + P;
 
 /** Rail hole `n` (1..25) sits at this column index, leaving a gap after every group of 5 (like a real rail). */
 function railCol(n: number): number {

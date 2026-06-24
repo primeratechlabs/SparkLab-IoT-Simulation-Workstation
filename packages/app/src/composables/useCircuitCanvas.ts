@@ -20,6 +20,7 @@ import {
   BOARD_CATALOG,
   wokwiBoardTagFor,
   LED_COLORS,
+  breadboardGroupOf,
   type BoardPin,
   type PropValue,
 } from '@sparklab/schematic';
@@ -55,6 +56,7 @@ export interface CanvasWire {
   to: { cid: string; pin: string };
   points: Point[]; // bend points between from and to
   color?: string; // user-chosen stroke colour (overrides the auto signal colour); UI only, no electrical effect
+  snap?: boolean; // auto-created by plugging a part pin into a breadboard hole (zero-length, never rendered)
 }
 interface PinPx {
   name: string;
@@ -77,6 +79,7 @@ const PART_MARGIN = 24; // keep this many px of a dragged part on-canvas
 const ROT_STEP = 30; // degrees per rotate click (design uses 30° steps)
 const BOARD_ROT_STEP = 30; // boards rotate in 30° steps too (matches parts; pinAbs tracks any angle)
 const GRID = 8; // wire bend points snap to this px grid (alignment aid)
+const SNAP_PX = 14; // a dropped part pin within this px of a breadboard hole plugs straight into it
 /** The palette offered for recolouring a wire (common breadboard jumper colours). */
 export const WIRE_COLORS = [
   '#e2554b',
@@ -347,6 +350,87 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     return { x: o.x + cx + (rx * ca - ry * sa), y: o.y + cy + (rx * sa + ry * ca) };
   }
 
+  // ── direct breadboard insertion ───────────────────────────────────────────────
+  // Plug a part straight onto a breadboard like the real thing: drop it so a pin lands on a hole and
+  // we nudge the whole part to seat that pin exactly in the hole, then auto-wire every pin still over a
+  // hole. The wires are `snap` (zero-length, never rendered) — visually the legs just sit in the holes;
+  // electrically the breadboard groups them (breadboardGroupOf in the canvas→document bridge) like Wokwi.
+  // No jumper wire required. Dragging the part out removes its snap wires (startDrag), so it re-plugs clean.
+  /** Every hole of every placed breadboard, as {cid, pin, pos} in canvas pixels. */
+  function breadboardHolesAbs(): Array<{ cid: string; pin: string; pos: Point }> {
+    const out: Array<{ cid: string; pin: string; pos: Point }> = [];
+    for (const bb of placed.value) {
+      if (bb.type !== 'breadboard') continue;
+      for (const info of pinsPx[bb.cid] ?? []) {
+        const pos = pinAbs(bb.cid, info.name);
+        if (pos) out.push({ cid: bb.cid, pin: info.name, pos });
+      }
+    }
+    return out;
+  }
+  /** True iff this part pin already terminates a wire (don't double-connect a hand-wired pin). */
+  function pinHasWire(cid: string, pin: string): boolean {
+    return wires.value.some(
+      (w) => (w.from.cid === cid && w.from.pin === pin) || (w.to.cid === cid && w.to.pin === pin),
+    );
+  }
+  /** Remove the snap (breadboard-insertion) wires of a part — called when it starts being dragged. */
+  function unplugFromBreadboard(cid: string): void {
+    wires.value = wires.value.filter((w) => !(w.snap && (w.from.cid === cid || w.to.cid === cid)));
+  }
+  /** On drop: if a part's pins landed on a breadboard, seat them and auto-wire each pin to its hole. */
+  function snapToBreadboard(cid: string): void {
+    const part = placed.value.find((q) => q.cid === cid);
+    if (!part || part.type === 'breadboard') return;
+    const pins = pinsPx[cid];
+    if (!pins?.length) return;
+    const holes = breadboardHolesAbs();
+    if (!holes.length) return;
+    // 1) closest (pin, hole) pair within SNAP_PX — the anchor we seat exactly.
+    let anchor: { pin: string; pos: Point; d: number } | null = null;
+    for (const info of pins) {
+      const pa = pinAbs(cid, info.name);
+      if (!pa) continue;
+      for (const h of holes) {
+        const d = Math.hypot(pa.x - h.pos.x, pa.y - h.pos.y);
+        if (d <= SNAP_PX && (!anchor || d < anchor.d)) anchor = { pin: info.name, pos: h.pos, d };
+      }
+    }
+    if (!anchor) return;
+    // 2) nudge the whole part so the anchor pin sits dead-centre in its hole.
+    const cur = pinAbs(cid, anchor.pin)!;
+    part.x = Math.round(part.x + (anchor.pos.x - cur.x));
+    part.y = Math.round(part.y + (anchor.pos.y - cur.y));
+    // 3) wire every pin now over a free hole (skip already-wired pins and holes taken this pass).
+    const taken = new Set<string>();
+    for (const info of pins) {
+      if (pinHasWire(cid, info.name)) continue;
+      const pa = pinAbs(cid, info.name);
+      if (!pa) continue;
+      let target: { cid: string; pin: string } | null = null;
+      let bestD = SNAP_PX;
+      for (const h of holes) {
+        const key = `${h.cid}${NET_SEP}${h.pin}`;
+        if (taken.has(key)) continue;
+        const d = Math.hypot(pa.x - h.pos.x, pa.y - h.pos.y);
+        if (d <= bestD) {
+          bestD = d;
+          target = { cid: h.cid, pin: h.pin };
+        }
+      }
+      if (!target) continue;
+      taken.add(`${target.cid}${NET_SEP}${target.pin}`);
+      wireSeq += 1;
+      wires.value.push({
+        id: `w${wireSeq}`,
+        from: { cid, pin: info.name },
+        to: target,
+        points: [],
+        snap: true,
+      });
+    }
+  }
+
   // ── net trace ─────────────────────────────────────────────────────────────────
   // Rebuilds union-find over the drawn wires whenever they change. The returned resolver maps a
   // component pin to the board pin number / ADC channel it is wired to (≤1 series-resistor hop, the
@@ -371,6 +455,20 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
       if (ra !== rb) parent.set(ra, rb);
     };
     for (const w of wires.value) union(pinKey(w.from.cid, w.from.pin), pinKey(w.to.cid, w.to.pin));
+    // Breadboard holes in the same group (column/rail) are one node — real-breadboard behaviour — so two
+    // pins plugged into the same column resolve as connected even with no jumper between them. Only wired
+    // holes matter, so union the holes that actually appear on a wire, grouped by breadboardGroupOf.
+    const bbGroup = new Map<string, string>(); // groupKey -> first wired hole's pinKey (the union anchor)
+    for (const w of wires.value) {
+      for (const ep of [w.from, w.to]) {
+        if (placed.value.find((q) => q.cid === ep.cid)?.type !== 'breadboard') continue;
+        const gk = `${ep.cid}${NET_SEP}${breadboardGroupOf(ep.pin)}`;
+        const k = pinKey(ep.cid, ep.pin);
+        const anchor = bbGroup.get(gk);
+        if (anchor) union(anchor, k);
+        else bbGroup.set(gk, k);
+      }
+    }
     const membersByRoot = new Map<string, string[]>();
     for (const k of parent.keys()) {
       const root = find(k);
@@ -623,7 +721,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     wires.value = [];
     cancelPending();
   }
-  const wireCount = computed(() => wires.value.length);
+  const wireCount = computed(() => wires.value.filter((w) => !w.snap).length); // visible jumpers only
 
   // ── selection / transform ────────────────────────────────────────────────────
   function selectPart(cid: string | null): void {
@@ -687,7 +785,25 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
 
   // ── derived render data ───────────────────────────────────────────────────────
   const pinDots = computed(() => {
-    const dots: { cid: string; pin: string; x: number; y: number; active: boolean }[] = [];
+    // A pin is "connected" if it terminates any wire (hand-drawn jumper OR a breadboard snap), so the
+    // canvas can highlight live pins/holes — the user can see at a glance what is wired to what.
+    const connected = new Set<string>();
+    for (const w of wires.value) {
+      connected.add(pinKey(w.from.cid, w.from.pin));
+      connected.add(pinKey(w.to.cid, w.to.pin));
+    }
+    // Breadboard holes render on a LOWER layer than the parts (so a part plugged in covers the holes it
+    // sits on), while board/part pins stay on top — so flag which dots are breadboard holes.
+    const bbCids = new Set(placed.value.filter((p) => p.type === 'breadboard').map((p) => p.cid));
+    const dots: {
+      cid: string;
+      pin: string;
+      x: number;
+      y: number;
+      active: boolean;
+      connected: boolean;
+      bb: boolean;
+    }[] = [];
     for (const cid of [BOARD_CID, ...placed.value.map((p) => p.cid)]) {
       for (const info of pinsPx[cid] ?? []) {
         const at = pinAbs(cid, info.name);
@@ -700,10 +816,66 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
           active:
             (pendingPin.value?.cid === cid && pendingPin.value?.pin === info.name) ||
             (hover.value?.cid === cid && hover.value?.pin === info.name),
+          connected: connected.has(pinKey(cid, info.name)),
+          bb: bbCids.has(cid),
         });
       }
     }
     return dots;
+  });
+
+  // The conduction strips a real breadboard hides under the plastic: every column (a–e / f–j) and power
+  // rail is one internal copper bus. We draw the bus for each group that has a connection (a plugged-in
+  // leg or a jumper), so the user can SEE that "these holes are the same node" — the path a signal takes
+  // through the board. A strip spans from the first to the last hole of its group (vertical for a column,
+  // horizontal for a rail). `live` = the net reaches a board signal pin (lit brighter than an idle bus).
+  const breadboardStrips = computed(() => {
+    const usedGroups = new Map<string, Set<string>>(); // bbCid -> connected group keys
+    for (const w of wires.value) {
+      for (const ep of [w.from, w.to]) {
+        if (placed.value.find((q) => q.cid === ep.cid)?.type !== 'breadboard') continue;
+        let s = usedGroups.get(ep.cid);
+        if (!s) usedGroups.set(ep.cid, (s = new Set()));
+        s.add(breadboardGroupOf(ep.pin));
+      }
+    }
+    const resolve = resolver.value;
+    const strips: {
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      live: boolean;
+    }[] = [];
+    for (const [cid, groups] of usedGroups) {
+      const byGroup = new Map<string, { pts: Point[]; live: boolean }>();
+      for (const info of pinsPx[cid] ?? []) {
+        const g = breadboardGroupOf(info.name);
+        if (!groups.has(g)) continue;
+        const at = pinAbs(cid, info.name);
+        if (!at) continue;
+        let e = byGroup.get(g);
+        if (!e) byGroup.set(g, (e = { pts: [], live: false }));
+        e.pts.push(at);
+        const role = resolve(cid, info.name);
+        if (role.digital !== undefined || role.analog !== undefined) e.live = true;
+      }
+      for (const [g, e] of byGroup) {
+        if (e.pts.length < 2) continue; // a lone hole has no visible run
+        const xs = e.pts.map((p) => p.x);
+        const ys = e.pts.map((p) => p.y);
+        strips.push({
+          id: `${cid}${NET_SEP}${g}`,
+          x1: Math.min(...xs),
+          y1: Math.min(...ys),
+          x2: Math.max(...xs),
+          y2: Math.max(...ys),
+          live: e.live,
+        });
+      }
+    }
+    return strips;
   });
 
   function polyline(a: Point, mids: Point[], b: Point): string {
@@ -711,6 +883,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
   }
   const wirePaths = computed(() =>
     wires.value
+      .filter((w) => !w.snap) // snap wires are invisible: the part's legs sit in the holes, no jumper drawn
       .map((w, i) => {
         const a = pinAbs(w.from.cid, w.from.pin);
         const b = pinAbs(w.to.cid, w.to.pin);
@@ -793,6 +966,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     const origin = cid === BOARD_CID ? boardPos : placed.value.find((q) => q.cid === cid);
     if (!origin) return;
     dragCid = cid;
+    if (cid !== BOARD_CID) unplugFromBreadboard(cid); // lifting a part off the board un-seats its pins
     const c = clientToContent(e);
     dragOff = { x: c.x - origin.x, y: c.y - origin.y };
     canvasEl.value.setPointerCapture?.(e.pointerId);
@@ -807,6 +981,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     target.y = clamp(Math.round(c.y - dragOff.y), 0, h - PART_MARGIN);
   }
   function endDrag(): void {
+    if (dragCid !== null && dragCid !== BOARD_CID) snapToBreadboard(dragCid); // seat pins into holes
     dragCid = null;
   }
   /** Canvas pointer-move: track the cursor (rubber-band) and forward to the active part drag. */
@@ -869,6 +1044,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     hoverLabel,
     // derived
     pinDots,
+    breadboardStrips,
     wirePaths,
     pendingSolid,
     rubberPath,

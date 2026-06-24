@@ -86,8 +86,21 @@ const {
   selected,
   wireCount,
   boardLayout,
+  breadboardStrips,
   zoom,
 } = canvas;
+
+// Breadboards render first (lowest z) so any part plugged into one sits ON TOP of it, never hidden under
+// it — regardless of the order the user added them. Relative order within each group is preserved.
+const renderParts = computed(() => {
+  const boards = placed.value.filter((p) => p.type === 'breadboard');
+  const rest = placed.value.filter((p) => p.type !== 'breadboard');
+  return [...boards, ...rest];
+});
+// Pin dots split across two layers: breadboard holes sit BELOW the parts (a plugged-in part covers the
+// holes under it); board + part pins stay on the top overlay (always visible + clickable).
+const partPinDots = computed(() => pinDots.value.filter((d) => !d.bb));
+const breadboardPinDots = computed(() => pinDots.value.filter((d) => d.bb));
 
 /** Palette: catalog parts that have a wokwi element. */
 const palette = computed<ComponentCatalogEntry[]>(() =>
@@ -487,17 +500,50 @@ onBeforeUnmount(() => {
               />
             </template>
 
-            <!-- pins overlay (top — always clickable, hoverable) -->
+            <!-- board + part pins (top — always clickable, hoverable; breadboard holes are a layer below) -->
             <circle
-              v-for="d in pinDots"
+              v-for="d in partPinDots"
               :key="`${d.cid}:${d.pin}`"
               :cx="d.x"
               :cy="d.y"
-              :r="d.active ? 6 : 4"
+              :r="d.active ? 6 : d.connected ? 4.5 : 4"
               class="pin"
-              :class="{ active: d.active }"
+              :class="{ active: d.active, connected: d.connected }"
               role="button"
               :aria-label="`Chân ${d.pin}`"
+              :data-cid="d.cid"
+              :data-pin="d.pin"
+              @pointerdown.stop="canvas.clickPin(d.cid, d.pin)"
+              @pointerenter="canvas.pinEnter(d.cid, d.pin)"
+              @pointerleave="canvas.pinLeave()"
+            />
+          </svg>
+
+          <!-- breadboard holes — a layer UNDER the parts (z-index 2) so a part plugged into the board covers
+               the holes it sits on, yet uncovered holes stay clickable for wiring. -->
+          <svg class="bb-holes">
+            <!-- conduction strips: the internal copper bus of each in-use column/rail, drawn so the user can
+                 see which holes are one node (the path through the board). "live" = reaches a board signal. -->
+            <line
+              v-for="s in breadboardStrips"
+              :key="s.id"
+              :x1="s.x1"
+              :y1="s.y1"
+              :x2="s.x2"
+              :y2="s.y2"
+              class="bb-strip"
+              :class="{ live: s.live }"
+            />
+            <circle
+              v-for="d in breadboardPinDots"
+              :key="`${d.cid}:${d.pin}`"
+              :cx="d.x"
+              :cy="d.y"
+              :r="d.active ? 6 : d.connected ? 4.5 : 4"
+              class="pin"
+              :class="{ active: d.active, connected: d.connected }"
+              role="button"
+              :aria-label="`Lỗ ${d.pin}`"
               :data-cid="d.cid"
               :data-pin="d.pin"
               @pointerdown.stop="canvas.clickPin(d.cid, d.pin)"
@@ -624,12 +670,12 @@ onBeforeUnmount(() => {
             <div class="fbsub">(chưa có hình wokwi — sẽ vẽ riêng)</div>
           </div>
 
-          <!-- placed components -->
+          <!-- placed components (breadboards first → they sit behind the parts plugged into them) -->
           <div
-            v-for="p in placed"
+            v-for="p in renderParts"
             :key="p.cid"
             class="part"
-            :class="{ selected: p.cid === selected }"
+            :class="{ selected: p.cid === selected, breadboard: p.type === 'breadboard' }"
             :style="{ left: `${p.x}px`, top: `${p.y}px` }"
             :data-cid="p.cid"
             @pointerdown.stop="onPartDown($event, p)"
@@ -637,7 +683,7 @@ onBeforeUnmount(() => {
             <component
               :is="p.tag"
               class="wokwi-host"
-              :style="{ transform: partTransform(p) }"
+              :style="{ transform: partTransform(p), pointerEvents: running ? undefined : 'none' }"
               v-bind="propsFor(p)"
               @button-press="onButton(p, true)"
               @button-release="onButton(p, false)"
@@ -878,6 +924,28 @@ onBeforeUnmount(() => {
   pointer-events: none;
   z-index: 5;
 }
+/* Breadboard holes: a layer between the board body (1) and the parts (3), so a plugged-in part covers the
+   holes it sits on while uncovered holes stay clickable. The svg is click-through; only the dots aren't. */
+.bb-holes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+/* A breadboard column/rail's internal copper bus — drawn behind the hole dots so the user sees which
+   holes are one node. Idle = a soft teal; `live` (the net reaches a board signal pin) glows brighter. */
+.bb-strip {
+  stroke: #12b886;
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.22;
+  pointer-events: none;
+}
+.bb-strip.live {
+  opacity: 0.52;
+}
 .wire {
   fill: none;
   stroke: #3b3530;
@@ -926,6 +994,16 @@ onBeforeUnmount(() => {
 .pin.active {
   opacity: 1;
 }
+/* A wired pin/hole reads teal (vs orange = free) so the user can track connections at a glance. */
+.pin.connected {
+  fill: #12b886;
+  stroke: #fff;
+  opacity: 0.92;
+}
+.pin.connected:hover,
+.pin.connected.active {
+  opacity: 1;
+}
 .pin-tip {
   position: absolute;
   z-index: 9;
@@ -949,6 +1027,11 @@ onBeforeUnmount(() => {
   cursor: grab;
   z-index: 2;
   transform-origin: center center;
+}
+/* A breadboard is the substrate: it sits at the back so its holes (z 2) and any plugged-in parts (z 3)
+   layer on top of it. */
+.part.breadboard {
+  z-index: 1;
 }
 .part.selected,
 .part.board.sel {
