@@ -29,8 +29,37 @@ function reload(): void {
 // so a new version waits and we surface a non-blocking banner — never a reload mid-compile. In dev (PWA
 // disabled) this is an inert stub. `needRefresh` flips true when an updated SW is ready to take over.
 const { needRefresh, updateServiceWorker } = useRegisterSW({ immediate: true });
-function applyUpdate(): void {
-  void updateServiceWorker(true); // activate the waiting SW + reload (user-initiated, so work is saved)
+const updating = ref(false);
+/**
+ * Activate the waiting service worker + reload onto the new version. We do NOT rely solely on the
+ * plugin's `updateServiceWorker(true)` — in production it can silently no-op (its internal registration
+ * handle goes stale), which is exactly the "click does nothing" symptom. So we message the waiting worker
+ * DIRECTLY (it skips waiting on `SKIP_WAITING`) and reload the moment control changes, with a grace-period
+ * fallback. The fresh index.html is not edge-cached, so a reload always pulls the new shell.
+ */
+async function applyUpdate(): Promise<void> {
+  if (updating.value) return;
+  updating.value = true;
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    location.reload();
+    return;
+  }
+  let reloaded = false;
+  const reload = (): void => {
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', reload);
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg?.waiting)
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' }); // the waiting SW takes over → controllerchange
+    else await updateServiceWorker(true); // no waiting worker cached — let the plugin re-check + activate
+  } catch {
+    void updateServiceWorker(true).catch(() => {});
+  }
+  window.setTimeout(reload, 3500); // last resort if control never hands over (stuck/already-active SW)
 }
 function dismissUpdate(): void {
   needRefresh.value = false;
@@ -67,9 +96,19 @@ function dismissUpdate(): void {
   <AdvancedLabs v-else @back="closeLabs" />
 
   <div v-if="needRefresh" class="pwa-update" data-testid="pwa-update" role="status">
-    <span>Có bản cập nhật SparkLab mới.</span>
-    <button type="button" class="pwa-apply" @click="applyUpdate">Cập nhật</button>
-    <button type="button" class="pwa-dismiss" aria-label="Để sau" @click="dismissUpdate">✕</button>
+    <span>{{ updating ? 'Đang cập nhật…' : 'Có bản cập nhật SparkLab mới.' }}</span>
+    <button type="button" class="pwa-apply" :disabled="updating" @click="applyUpdate">
+      {{ updating ? '…' : 'Cập nhật' }}
+    </button>
+    <button
+      v-if="!updating"
+      type="button"
+      class="pwa-dismiss"
+      aria-label="Để sau"
+      @click="dismissUpdate"
+    >
+      ✕
+    </button>
   </div>
 </template>
 
