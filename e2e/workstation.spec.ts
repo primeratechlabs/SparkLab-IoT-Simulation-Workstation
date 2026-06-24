@@ -85,25 +85,9 @@ test.describe('Mạch Ảo — navigation', () => {
     await expect(page.getByText('Bắt đầu một dự án mới')).toHaveCount(0);
   });
 
-  test('start → advanced labs → back to start', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId('open-advanced-labs').click();
-    await expect(page.getByText('Advanced labs')).toBeVisible();
-    await page.getByTestId('labs-back').click();
-    await expect(page.getByText('Bắt đầu một dự án mới')).toBeVisible();
-  });
-
-  test('workspace → advanced labs → back returns to the workspace (AUD-002)', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId('board-arduino-uno').click();
-    await expect(page.getByTestId('ws-run')).toBeVisible();
-    await page.getByTestId('ws-open-labs').click();
-    await expect(page.getByText('Advanced labs')).toBeVisible();
-    await page.getByTestId('labs-back').click();
-    // Back from Labs returns to the project the user was in, not the Start screen.
-    await expect(page.getByTestId('ws-run')).toBeVisible();
-    await expect(page.getByText('Bắt đầu một dự án mới')).toHaveCount(0);
-  });
+  // The in-app "Nâng cao / Chế độ nâng cao" buttons were removed (Advanced labs is now an internal
+  // ?view=labs deep-link only), so the button-entry navigation tests no longer apply — the deep-link
+  // test above covers reachability, and useAppView.test.ts covers the open/close view transitions.
 
   test('Start offers Resume after leaving a project, and it reopens the workspace (AUD-002)', async ({
     page,

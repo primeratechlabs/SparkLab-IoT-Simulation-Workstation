@@ -195,9 +195,30 @@ const {
   setPot,
   setDeviceProp,
 } = useSimRunner();
-// WiFi tier control is shown only for boards that have WiFi (ESP32). 'fake' = offline Tier 1 (default,
-// deterministic, no egress); 'real' = real Internet (opt-in). The badge mirrors WiFi.status() while running.
+// WiFi tier control is shown only for boards that have WiFi (ESP32). 'real' = real Internet (the DEFAULT
+// when online); 'fake' = offline Tier 1 (deterministic virtual broker, no egress — the fallback when the
+// browser is offline). The badge mirrors WiFi.status() while running.
 const showNetwork = computed(() => boardHasWifi(props.boardId));
+
+// Serial monitor: follow the tail by default so the newest output stays visible — no more scrolling down
+// by hand. "Tự cuộn" lets the user turn it off to read back; scrolling up pauses the follow, returning to
+// the bottom resumes it.
+const serialLog = ref<HTMLElement | null>(null);
+const autoScroll = ref(true);
+function scrollSerialToTail(): void {
+  const el = serialLog.value;
+  if (el) el.scrollTop = el.scrollHeight;
+}
+function onSerialScroll(): void {
+  const el = serialLog.value;
+  if (el) autoScroll.value = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+}
+watch(serial, () => {
+  if (autoScroll.value) void nextTick(scrollSerialToTail);
+});
+watch(autoScroll, (on) => {
+  if (on) void nextTick(scrollSerialToTail);
+});
 const wifiLabel = computed(() => {
   const w = network.value?.wifi;
   return w === 'connected'
@@ -350,7 +371,7 @@ const runningStatusText = computed(() =>
       <div class="boardchip"><span class="bdot"></span>{{ board?.name ?? boardId }}</div>
       <span style="flex: 1"></span>
 
-      <!-- Network tier (ESP32 only): offline Tier-1 by default; real Internet is opt-in. WiFi badge while running. -->
+      <!-- Network tier (ESP32 only): real Internet by default when online, virtual/offline as fallback. WiFi badge while running. -->
       <div v-if="showNetwork" class="netctl" data-testid="ws-network">
         <span
           class="wifi-chip"
@@ -367,8 +388,8 @@ const runningStatusText = computed(() =>
           data-testid="ws-net-tier"
           title="Chọn lớp mạng cho ESP32"
         >
-          <option value="fake">📶 Mạng ảo (offline)</option>
           <option value="real">🌐 Internet thật</option>
+          <option value="fake">📶 Mạng ảo (offline)</option>
           <option value="off">⊘ Tắt mạng</option>
         </select>
         <span
@@ -419,8 +440,6 @@ const runningStatusText = computed(() =>
       <button v-else class="run" data-testid="ws-run" @click="toggleRun">
         <svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z" fill="#fff" /></svg>Chạy
       </button>
-
-      <button class="ghost" data-testid="ws-open-labs" @click="$emit('open-labs')">Nâng cao</button>
     </div>
 
     <!-- Layout A — resizable: editor | (circuit / serial). Drag the gutters; double-click to reset. -->
@@ -438,7 +457,7 @@ const runningStatusText = computed(() =>
             data-testid="tab-code"
             @click="tab = 'code'"
           >
-            <span class="pdot" />{{ name }}.ino
+            <span class="pdot" />sketch.ino
           </button>
           <button
             class="ptab"
@@ -686,12 +705,16 @@ const runningStatusText = computed(() =>
             >{{ (vtimeMs / 1000).toFixed(1) }}s ảo · {{ ledToggles }} lần đổi</span
           >
           <span style="flex: 1"></span>
+          <label class="autoscroll" title="Tự động cuộn xuống dòng mới nhất">
+            <input v-model="autoScroll" type="checkbox" data-testid="ws-serial-autoscroll" />
+            ↓ Tự cuộn
+          </label>
           <span v-if="message" class="errmsg" data-testid="ws-message">{{ message }}</span>
         </div>
         <div v-if="buildNotes.length" class="buildnotes" data-testid="ws-build-notes">
           <p v-for="(note, i) in buildNotes" :key="i">ⓘ {{ note }}</p>
         </div>
-        <pre class="log" data-testid="serial-log">{{
+        <pre ref="serialLog" class="log" data-testid="serial-log" @scroll="onSerialScroll">{{
           serial || (status === 'idle' ? '— Bấm Chạy để biên dịch và xem kết quả —' : '')
         }}</pre>
       </section>
@@ -1356,6 +1379,20 @@ const runningStatusText = computed(() =>
   font-size: 11.5px;
   line-height: 1.4;
   color: var(--amber-ink, #8a6d1a);
+}
+.autoscroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #6b6459;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.autoscroll input {
+  margin: 0;
+  cursor: pointer;
 }
 .log {
   flex: 1;

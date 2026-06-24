@@ -938,13 +938,13 @@ onBeforeUnmount(() => {
    holes are one node. Idle = a soft teal; `live` (the net reaches a board signal pin) glows brighter. */
 .bb-strip {
   stroke: #12b886;
-  stroke-width: 6;
+  stroke-width: 6.5;
   stroke-linecap: round;
-  opacity: 0.22;
+  opacity: 0.34;
   pointer-events: none;
 }
 .bb-strip.live {
-  opacity: 0.52;
+  opacity: 0.64;
 }
 .wire {
   fill: none;
@@ -1343,10 +1343,13 @@ onBeforeUnmount(() => {
 }
 .dgrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr) lets columns shrink below a long part name (the grid-blowout fix); only scroll
+     vertically so the library never scrolls sideways (responsive in the fixed-width drawer). */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   max-height: 240px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .dempty {
   grid-column: 1 / -1;
@@ -1366,6 +1369,8 @@ onBeforeUnmount(() => {
   background: var(--panel);
   cursor: grab;
   text-align: center;
+  min-width: 0; /* allow the button to shrink inside its grid cell */
+  overflow-wrap: anywhere; /* wrap long part names instead of forcing a horizontal scroll */
 }
 .ditem:hover {
   border-color: var(--accent);

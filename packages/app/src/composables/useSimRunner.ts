@@ -110,9 +110,11 @@ export function useSimRunner() {
   const vtimeMs = ref(0);
   const devices = ref<Record<string, DeviceReflection>>({}); // drawn-device visible state (servo angle, LCD text, …)
   const pwmDuty = ref<Record<number, number>>({}); // PWM duty 0..1 per pin/channel
-  // Network tier for ESP32 runs: 'fake' (Tier 1, offline — default; WiFi sketches connect with no egress)
-  // or 'real' (Tier 2 — the real Internet, opt-in). `network` is the polled WiFi/MQTT snapshot for the UI.
-  const networkTier = ref<NetworkTier>('fake');
+  // Network tier for ESP32 runs: 'real' (Tier 2 — the real Internet) is the DEFAULT when the user is
+  // actually online; we fall back to 'fake' (Tier 1, offline — deterministic virtual broker, no egress)
+  // only when the browser reports no connectivity. `network` is the polled WiFi/MQTT snapshot for the UI.
+  const onlineNow = typeof navigator === 'undefined' || navigator.onLine !== false;
+  const networkTier = ref<NetworkTier>(onlineNow ? 'real' : 'fake');
   const network = ref<NetworkSnapshot | null>(null);
   let netActive = false; // true only during an ESP32 run with a tier ≠ 'off' (AVR has no network to poll)
 
@@ -239,9 +241,14 @@ export function useSimRunner() {
       if (tierPlan.tier !== networkTier.value) networkTier.value = tierPlan.tier; // reflect in the UI dropdown
       netActive = arch !== 'avr' && networkTier.value !== 'off';
       if (arch !== 'avr') {
+        // Pass the MQTT broker (which EAGERLY opens a WebSocket) only when the sketch actually uses generic
+        // MQTT. Otherwise a plain ESP32 sketch on the real-Internet default would needlessly connect to a
+        // public broker (and could surface a spurious "mqtt connect failed"). WiFi/HTTP use Tier2Network and
+        // Blynk presence connects lazily on Blynk.begin, so neither needs this.
+        const usesMqtt = /\b(PubSubClient|MqttClient|mqtt|MQTT)\b/.test(sketch);
         await getSim().setNetworkTier(
           networkTier.value,
-          networkTier.value === 'real' ? { mqttWsUrl: DEFAULT_MQTT_WS_URL } : {},
+          networkTier.value === 'real' && usesMqtt ? { mqttWsUrl: DEFAULT_MQTT_WS_URL } : {},
         );
         if (myGen !== gen) return;
       }

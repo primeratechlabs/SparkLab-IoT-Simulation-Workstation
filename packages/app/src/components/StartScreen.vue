@@ -72,9 +72,6 @@ function boardTint(id: string): string {
       >
         ↩ Tiếp tục dự án
       </button>
-      <button class="ghost" data-testid="open-advanced-labs" @click="emit('open-labs')">
-        Chế độ nâng cao
-      </button>
     </div>
 
     <div class="body">
