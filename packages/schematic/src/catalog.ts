@@ -42,6 +42,8 @@ import {
   RotaryDialer,
   IrReceiver,
   IrRemote,
+  Ili9341,
+  MicroSdCard,
 } from '@sparklab/components-core';
 import type { ComponentKind } from '@sparklab/sim-kernel';
 import type { PinType, PropValue } from './types.js';
@@ -1458,6 +1460,49 @@ export const COMPONENT_CATALOG = {
     build: (c) => new IrRemote(c.id),
   },
 
+  ili9341: {
+    type: 'ili9341',
+    displayName: 'Màn hình TFT 2.8" (ILI9341)',
+    category: 'display',
+    description:
+      'Màn hình TFT SPI 240×320 (ILI9341). Chọn bằng CS, chân D/C phân biệt lệnh/dữ liệu. Giải mã CASET/PASET/RAMWR (thư viện Adafruit_GFX/TFT_eSPI) → vẽ pixel RGB565 thật vào khung hình. MOSI/SCK là bus SPI phần cứng.',
+    tags: ['tft', 'display', 'ili9341', 'spi', 'lcd', 'graphics'],
+    kind: 'tft',
+    pins: [
+      { name: 'cs', type: 'digital', x: 0, y: 0 },
+      { name: 'dc', type: 'digital', x: 12, y: 0 },
+      { name: 'mosi', type: 'digital', x: 24, y: 0 },
+      { name: 'sck', type: 'digital', x: 36, y: 0 },
+      { name: 'miso', type: 'digital', x: 48, y: 0 },
+      { name: 'vcc', type: 'power', x: 0, y: 12 },
+      { name: 'gnd', type: 'ground', x: 12, y: 12 },
+    ],
+    properties: [],
+    size: { w: 120, h: 160 },
+    build: (c) => new Ili9341(c.id, c.digital('cs'), c.digital('dc')),
+  },
+
+  'microsd-card': {
+    type: 'microsd-card',
+    displayName: 'Thẻ nhớ microSD',
+    category: 'sensor',
+    description:
+      'Khe thẻ microSD giao tiếp SPI. Mô phỏng đủ trình tự init (CMD0→CMD8→ACMD41→CMD58) + đọc/ghi block (CMD17/CMD24) trên ảnh đĩa FAT16 có sẵn một tệp mẫu, để thư viện SD mount và đọc/ghi tệp thật.',
+    tags: ['microsd', 'sd', 'card', 'spi', 'storage', 'fat'],
+    kind: 'sdcard',
+    pins: [
+      { name: 'cs', type: 'digital', x: 0, y: 0 },
+      { name: 'mosi', type: 'digital', x: 12, y: 0 },
+      { name: 'miso', type: 'digital', x: 24, y: 0 },
+      { name: 'sck', type: 'digital', x: 36, y: 0 },
+      { name: 'vcc', type: 'power', x: 0, y: 12 },
+      { name: 'gnd', type: 'ground', x: 12, y: 12 },
+    ],
+    properties: [],
+    size: { w: 80, h: 64 },
+    build: (c) => new MicroSdCard(c.id, c.digital('cs')),
+  },
+
   breadboard: {
     type: 'breadboard',
     displayName: 'Breadboard (400 lỗ)',
@@ -1550,6 +1595,8 @@ export const WOKWI_ELEMENT: { [T in CatalogComponentType]: string } = {
   'rotary-dialer': 'wokwi-rotary-dialer',
   'ir-receiver': 'wokwi-ir-receiver',
   'ir-remote': 'wokwi-ir-remote',
+  ili9341: 'wokwi-ili9341',
+  'microsd-card': 'wokwi-microsd-card',
   // breadboard: NOT in @wokwi/elements — our own vendored visual element (see app/lib/breadboard-element).
   breadboard: 'sparklab-breadboard',
 };
@@ -1663,6 +1710,18 @@ export const COMPONENT_PIN_ALIAS: { [T in CatalogComponentType]: Record<string, 
   'ir-receiver': { DAT: 'dat', VCC: 'vcc', GND: 'gnd' },
   // ir-remote: wireless — no wokwi pins to alias.
   'ir-remote': {},
+  // ili9341 TFT: CS + D/C GPIOs the model needs; MOSI/SCK/MISO are the hardware SPI bus.
+  ili9341: {
+    CS: 'cs',
+    'D/C': 'dc',
+    MOSI: 'mosi',
+    SCK: 'sck',
+    MISO: 'miso',
+    VCC: 'vcc',
+    GND: 'gnd',
+  },
+  // microsd-card: CS gate; DI=MOSI, DO=MISO on the hardware SPI bus.
+  'microsd-card': { CS: 'cs', DI: 'mosi', DO: 'miso', SCK: 'sck', VCC: 'vcc', GND: 'gnd' },
   // breadboard: holes are resolved to net groups by the bridge (breadboardGroupOf), not a static alias.
   breadboard: {},
 };

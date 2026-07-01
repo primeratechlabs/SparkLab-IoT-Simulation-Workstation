@@ -112,3 +112,31 @@ export type SpiMode = 0 | 1 | 2 | 3;
 export function spiModeToCpolCpha(mode: SpiMode): { cpol: 0 | 1; cpha: 0 | 1 } {
   return { cpol: ((mode >> 1) & 1) as 0 | 1, cpha: (mode & 1) as 0 | 1 };
 }
+
+/** A slave device on the SPI bus, gated by its own chip-select (CS) line. */
+export interface SpiDevice {
+  /** True while this device's chip-select is asserted (CS driven LOW). */
+  readonly selected: boolean;
+  /** Master shifted `mosi` out on MOSI; return the byte to shift back on MISO. */
+  transfer(mosi: number): number;
+}
+
+/**
+ * SPI bus: one master (the MCU) + N slaves, each gated by its own CS pin (unlike I2C's shared address,
+ * SPI selects a device by pulling its CS LOW). On every byte the master shifts, the bus routes it to the
+ * currently-selected device and returns that device's MISO byte. With no device selected the line reads
+ * 0xff (the idle, pulled-up MISO) — exactly what a master sees when it clocks an unselected bus.
+ */
+export class SpiBus {
+  private readonly devices: SpiDevice[] = [];
+
+  addDevice(device: SpiDevice): void {
+    this.devices.push(device);
+  }
+
+  /** Route one byte to the selected device; returns its MISO byte (0xff if none is selected). */
+  transfer(mosi: number): number {
+    const active = this.devices.find((d) => d.selected);
+    return active ? active.transfer(mosi & 0xff) & 0xff : 0xff;
+  }
+}

@@ -52,6 +52,7 @@ import {
   RotaryDialer,
   IrReceiver,
   IrRemote,
+  Ili9341,
 } from '@sparklab/components-core';
 import { COMPONENT_CATALOG, type CatalogComponentType } from './catalog.js';
 import { instantiateComponents, type InstantiateIssue } from './instantiate.js';
@@ -514,6 +515,18 @@ export const DEVICE_RUNTIME: { [T in DrawableComponentType]: DeviceRuntimeModel 
       (c as IrRemote).press(Number(v));
       return true;
     },
+  },
+  ili9341: {
+    kind: 'tft',
+    reflect: (c) => {
+      const d = c as Ili9341;
+      const lit = d.litPixels;
+      return { kind: 'tft', width: d.width, height: d.height, litPixels: lit, on: lit > 0 };
+    },
+  },
+  'microsd-card': {
+    kind: 'sdcard',
+    reflect: () => ({ kind: 'sdcard' }),
   },
 };
 

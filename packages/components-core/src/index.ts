@@ -35,4 +35,6 @@ export * from './hx711.js';
 export * from './rotary-dialer.js';
 export * from './ir-receiver.js';
 export * from './ir-remote.js';
+export * from './ili9341.js';
+export * from './microsd-card.js';
 export * from './svg-sanitizer.js';

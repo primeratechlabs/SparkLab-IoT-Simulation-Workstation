@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { I2cDevice } from '@sparklab/sim-kernel';
+import type { I2cDevice, SpiDevice } from '@sparklab/sim-kernel';
 import {
   Led,
   PushButton,
@@ -48,6 +48,10 @@ class MockHost implements CircuitHost {
   }
   addI2cDevice(address: number, device: I2cDevice): void {
     this.i2c.set(address, device);
+  }
+  spiDevices: SpiDevice[] = [];
+  addSpiDevice(device: SpiDevice): void {
+    this.spiDevices.push(device);
   }
 
   // ── test helpers ──

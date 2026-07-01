@@ -4,7 +4,8 @@
  * drives/sets, and fires scheduled callbacks when virtual time is advanced. Lets every
  * component be tested deterministically without the emulator.
  */
-import type { I2cDevice } from '@sparklab/sim-kernel';
+import type { I2cDevice, SpiDevice } from '@sparklab/sim-kernel';
+import { SpiBus } from '@sparklab/sim-kernel';
 import type { CircuitHost, DriveLevel } from './sdk.js';
 
 export class MockCircuitHost implements CircuitHost {
@@ -15,6 +16,8 @@ export class MockCircuitHost implements CircuitHost {
   readonly adc = new Map<number, number>();
   /** I2C devices the component registered, keyed by address. */
   readonly i2c = new Map<number, I2cDevice>();
+  /** SPI bus the component registered on (route bytes with `spiTransfer`). */
+  readonly spi = new SpiBus();
 
   private readonly watchers = new Map<number, ((level: 'low' | 'high') => void)[]>();
   private readonly mcuLevel = new Map<number, 'low' | 'high'>();
@@ -47,6 +50,15 @@ export class MockCircuitHost implements CircuitHost {
   }
   addI2cDevice(address: number, device: I2cDevice): void {
     this.i2c.set(address, device);
+  }
+  addSpiDevice(device: SpiDevice): void {
+    this.spi.addDevice(device);
+  }
+
+  // ── test helper ──
+  /** Shift one byte to the CS-selected SPI slave; returns its MISO byte (0xff if none selected). */
+  spiTransfer(mosi: number): number {
+    return this.spi.transfer(mosi);
   }
 
   // ── test helpers ──

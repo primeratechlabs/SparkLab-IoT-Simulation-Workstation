@@ -52,6 +52,8 @@ export type ComponentKind =
   | 'loadcell'
   | 'dialer'
   | 'ir'
+  | 'tft'
+  | 'sdcard'
   | 'wire';
 
 export interface NetlistComponent {

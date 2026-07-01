@@ -173,6 +173,7 @@ class MockHost implements CircuitHost {
   drivePin(_pin: number, _level: DriveLevel): void {}
   setAdcVolts(): void {}
   addI2cDevice(): void {}
+  addSpiDevice(): void {}
   set(pin: number, level: 'low' | 'high'): void {
     this.levels.set(pin, level);
     for (const cb of this.watchers.get(pin) ?? []) cb(level);

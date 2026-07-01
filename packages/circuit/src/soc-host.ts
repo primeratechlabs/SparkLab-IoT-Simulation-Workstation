@@ -15,7 +15,7 @@
  * backends (the conformance lock requires it).
  */
 import type { CircuitHost, DriveLevel, SimComponent } from '@sparklab/components-core';
-import type { I2cDevice } from '@sparklab/sim-kernel';
+import { SpiBus, type I2cDevice, type SpiDevice } from '@sparklab/sim-kernel';
 
 /** The SoC runner peripherals SocHost binds to (Rv32Runner / XtensaRunner expose these publicly). */
 export interface SocBackend {
@@ -115,5 +115,11 @@ export class SocHost implements CircuitHost {
   }
   addI2cDevice(address: number, device: I2cDevice): void {
     this.soc.i2c.attach(address, device);
+  }
+  // The ESP32 SoC sim does not model the SPI controller yet, so SPI slaves register but receive no
+  // firmware traffic on this board (the AVR/Uno path drives them). Keeps the CircuitHost contract total.
+  readonly spi = new SpiBus();
+  addSpiDevice(device: SpiDevice): void {
+    this.spi.addDevice(device);
   }
 }

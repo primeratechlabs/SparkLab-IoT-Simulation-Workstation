@@ -8,9 +8,9 @@
  *   emulator (AVRRunner) ──gpio/adc/uart/twi──▶ CircuitHost ──▶ components
  *                        ◀──inputs (drivePin/setAdc/i2cReply)──┘
  */
-import { AVRTWI, twiConfig, PinState, type TWIEventHandler } from 'avr8js';
+import { AVRTWI, AVRSPI, twiConfig, spiConfig, PinState, type TWIEventHandler } from 'avr8js';
 import { AVRRunner, digitalPinToPort, UNO_CLOCK_HZ, type PortName } from '@sparklab/emulators';
-import { VirtualTimeKernel, I2cBus } from '@sparklab/sim-kernel';
+import { VirtualTimeKernel, I2cBus, SpiBus, type SpiDevice } from '@sparklab/sim-kernel';
 import type { CircuitHost, DriveLevel, SimComponent } from '@sparklab/components-core';
 
 const PORTS: PortName[] = ['B', 'C', 'D'];
@@ -23,8 +23,10 @@ export interface CircuitOptions {
 export class Circuit implements CircuitHost {
   readonly runner: AVRRunner;
   readonly bus = new I2cBus();
+  readonly spi = new SpiBus();
   private readonly vtk = new VirtualTimeKernel();
   private readonly twi: AVRTWI;
+  private readonly spiPeripheral: AVRSPI;
   private readonly components: SimComponent[] = [];
   private readonly tickers: SimComponent[] = [];
   private readonly watchers = new Map<number, ((level: 'low' | 'high') => void)[]>();
@@ -37,6 +39,10 @@ export class Circuit implements CircuitHost {
     this.bus.setPullups(opts.i2cPullups ?? true);
     this.twi = new AVRTWI(this.runner.cpu, twiConfig, freq);
     this.twi.eventHandler = this.makeTwiHandler();
+    // SPI: every byte the master shifts is routed to the CS-selected slave; its reply lands on MISO.
+    this.spiPeripheral = new AVRSPI(this.runner.cpu, spiConfig, freq);
+    this.spiPeripheral.onByte = (mosi) =>
+      this.spiPeripheral.completeTransfer(this.spi.transfer(mosi));
     this.runner.onSerialByte((b) => {
       this.serialOut += String.fromCharCode(b);
       if (this.serialOut.length > 8000) this.serialOut = this.serialOut.slice(-8000);
@@ -106,6 +112,9 @@ export class Circuit implements CircuitHost {
   }
   addI2cDevice(address: number, device: import('@sparklab/sim-kernel').I2cDevice): void {
     this.bus.addDevice(address, device);
+  }
+  addSpiDevice(device: SpiDevice): void {
+    this.spi.addDevice(device);
   }
 
   // ── internals ──

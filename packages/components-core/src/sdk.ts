@@ -5,7 +5,7 @@
  * fetch / OPFS — components only see this surface (the sandbox boundary; a WASM
  * runtime with a watchdog layers on top later for untrusted components).
  */
-import type { I2cDevice } from '@sparklab/sim-kernel';
+import type { I2cDevice, SpiDevice } from '@sparklab/sim-kernel';
 
 export type DriveLevel = 'low' | 'high' | 'high-z';
 
@@ -29,6 +29,8 @@ export interface CircuitHost {
   setAdcVolts(channel: number, volts: number): void;
   /** Register an I2C slave device at a 7-bit address. */
   addI2cDevice(address: number, device: I2cDevice): void;
+  /** Register an SPI slave device (gated by its own CS pin, which it watches itself). */
+  addSpiDevice(device: SpiDevice): void;
 }
 
 /** A simulated component. `attach` wires it to the host; `tick` is an optional

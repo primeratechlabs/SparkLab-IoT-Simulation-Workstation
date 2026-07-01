@@ -51,6 +51,8 @@ const KNOWN_KINDS = new Set([
   'loadcell',
   'dialer',
   'ir',
+  'tft',
+  'sdcard',
 ]);
 
 function ctx(over: Partial<BuildContext>): BuildContext {
@@ -58,8 +60,8 @@ function ctx(over: Partial<BuildContext>): BuildContext {
 }
 
 describe('catalog — integrity', () => {
-  it('registers the 43 built-in components, each well-formed', () => {
-    expect(CATALOG_TYPES).toHaveLength(43);
+  it('registers the 45 built-in components, each well-formed', () => {
+    expect(CATALOG_TYPES).toHaveLength(45);
     for (const type of CATALOG_TYPES) {
       const e = catalogEntry(type)!;
       expect(e.type).toBe(type); // key matches entry.type
