@@ -50,6 +50,8 @@ import {
   MembraneKeypad,
   Hx711,
   RotaryDialer,
+  IrReceiver,
+  IrRemote,
 } from '@sparklab/components-core';
 import { COMPONENT_CATALOG, type CatalogComponentType } from './catalog.js';
 import { instantiateComponents, type InstantiateIssue } from './instantiate.js';
@@ -492,6 +494,24 @@ export const DEVICE_RUNTIME: { [T in DrawableComponentType]: DeviceRuntimeModel 
     applyProp: (c, name, v) => {
       if (name !== 'digit') return false;
       (c as RotaryDialer).dial(Number(v));
+      return true;
+    },
+  },
+  'ir-receiver': {
+    kind: 'ir',
+    reflect: (c) => ({ kind: 'ir', command: (c as IrReceiver).lastCommand }),
+    applyProp: (c, name, v) => {
+      if (name !== 'command') return false;
+      (c as IrReceiver).receive(Number(v));
+      return true;
+    },
+  },
+  'ir-remote': {
+    kind: 'ir',
+    reflect: (c) => ({ kind: 'ir', command: (c as IrRemote).lastKey }),
+    applyProp: (c, name, v) => {
+      if (name !== 'key') return false;
+      (c as IrRemote).press(Number(v));
       return true;
     },
   },

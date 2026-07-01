@@ -33,4 +33,6 @@ export * from './stepper.js';
 export * from './membrane-keypad.js';
 export * from './hx711.js';
 export * from './rotary-dialer.js';
+export * from './ir-receiver.js';
+export * from './ir-remote.js';
 export * from './svg-sanitizer.js';

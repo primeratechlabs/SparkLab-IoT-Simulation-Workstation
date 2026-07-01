@@ -51,6 +51,7 @@ export type ComponentKind =
   | 'keypad'
   | 'loadcell'
   | 'dialer'
+  | 'ir'
   | 'wire';
 
 export interface NetlistComponent {

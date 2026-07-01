@@ -40,6 +40,8 @@ import {
   KEYPAD_4X4,
   Hx711,
   RotaryDialer,
+  IrReceiver,
+  IrRemote,
 } from '@sparklab/components-core';
 import type { ComponentKind } from '@sparklab/sim-kernel';
 import type { PinType, PropValue } from './types.js';
@@ -1401,6 +1403,61 @@ export const COMPONENT_CATALOG = {
     },
   },
 
+  'ir-receiver': {
+    type: 'ir-receiver',
+    displayName: 'Mắt thu hồng ngoại (IR)',
+    category: 'sensor',
+    description:
+      'Mắt thu hồng ngoại (VS1838B) — chân DAT xuất khung NEC đã giải điều chế (active-LOW) để firmware giải mã bằng thư viện IRremote. Phát mã từ inspector hoặc từ điều khiển IR cùng mạch.',
+    tags: ['ir', 'infrared', 'receiver', 'nec', 'remote', 'sensor'],
+    kind: 'ir',
+    pins: [
+      { name: 'dat', type: 'digital', x: 0, y: 0 },
+      { name: 'vcc', type: 'power', x: 12, y: 0 },
+      { name: 'gnd', type: 'ground', x: 24, y: 0 },
+    ],
+    properties: [
+      {
+        name: 'command',
+        label: 'Mã lệnh NEC (0–255)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: 0,
+        max: 255,
+      },
+    ],
+    size: { w: 32, h: 32 },
+    build: (c) => {
+      const dat = c.digital('dat');
+      return dat === undefined ? null : new IrReceiver(c.id, dat);
+    },
+  },
+
+  'ir-remote': {
+    type: 'ir-remote',
+    displayName: 'Điều khiển hồng ngoại (IR)',
+    category: 'input',
+    description:
+      'Điều khiển từ xa hồng ngoại (không nối dây MCU, như thật). Nhấn phím phát mã NEC tới MỌI mắt thu IR trong cùng mạch để firmware giải mã. Chọn phím ở inspector.',
+    tags: ['ir', 'infrared', 'remote', 'nec', 'transmitter', 'input'],
+    kind: 'ir',
+    pins: [], // wireless transmitter: no MCU wiring (drives same-circuit IR receivers)
+    properties: [
+      {
+        name: 'key',
+        label: 'Phím (mã NEC 0–255)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: 0,
+        max: 255,
+      },
+    ],
+    size: { w: 48, h: 96 },
+    build: (c) => new IrRemote(c.id),
+  },
+
   breadboard: {
     type: 'breadboard',
     displayName: 'Breadboard (400 lỗ)',
@@ -1491,6 +1548,8 @@ export const WOKWI_ELEMENT: { [T in CatalogComponentType]: string } = {
   'membrane-keypad': 'wokwi-membrane-keypad',
   hx711: 'wokwi-hx711',
   'rotary-dialer': 'wokwi-rotary-dialer',
+  'ir-receiver': 'wokwi-ir-receiver',
+  'ir-remote': 'wokwi-ir-remote',
   // breadboard: NOT in @wokwi/elements — our own vendored visual element (see app/lib/breadboard-element).
   breadboard: 'sparklab-breadboard',
 };
@@ -1600,6 +1659,10 @@ export const COMPONENT_PIN_ALIAS: { [T in CatalogComponentType]: Record<string, 
   hx711: { SCK: 'sck', DT: 'dt', VCC: 'vcc', GND: 'gnd' },
   // rotary-dialer: PULSE train + DIAL off-normal contact.
   'rotary-dialer': { PULSE: 'pulse', DIAL: 'dial', GND: 'gnd' },
+  // ir-receiver: DAT is the demodulated data line the MCU reads.
+  'ir-receiver': { DAT: 'dat', VCC: 'vcc', GND: 'gnd' },
+  // ir-remote: wireless — no wokwi pins to alias.
+  'ir-remote': {},
   // breadboard: holes are resolved to net groups by the bridge (breadboardGroupOf), not a static alias.
   breadboard: {},
 };

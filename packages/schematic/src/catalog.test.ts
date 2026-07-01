@@ -50,6 +50,7 @@ const KNOWN_KINDS = new Set([
   'keypad',
   'loadcell',
   'dialer',
+  'ir',
 ]);
 
 function ctx(over: Partial<BuildContext>): BuildContext {
@@ -57,14 +58,16 @@ function ctx(over: Partial<BuildContext>): BuildContext {
 }
 
 describe('catalog — integrity', () => {
-  it('registers the 41 built-in components, each well-formed', () => {
-    expect(CATALOG_TYPES).toHaveLength(41);
+  it('registers the 43 built-in components, each well-formed', () => {
+    expect(CATALOG_TYPES).toHaveLength(43);
     for (const type of CATALOG_TYPES) {
       const e = catalogEntry(type)!;
       expect(e.type).toBe(type); // key matches entry.type
       expect(e.displayName.length).toBeGreaterThan(0);
       expect(KNOWN_KINDS.has(e.kind)).toBe(true);
-      expect(e.pins.length).toBeGreaterThan(0);
+      // every part has MCU pins EXCEPT the ir-remote, a wireless transmitter (drives receivers, no wiring)
+      if (type === 'ir-remote') expect(e.pins.length).toBe(0);
+      else expect(e.pins.length).toBeGreaterThan(0);
       expect(typeof e.build).toBe('function');
       // every pin has a name + a known electrical type
       for (const p of e.pins) expect(p.name.length).toBeGreaterThan(0);
