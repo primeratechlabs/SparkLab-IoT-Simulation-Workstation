@@ -29,7 +29,7 @@ export interface ElementPin {
 // reads pinInfo x/y as PIXELS at the element's rendered size (offsetWidth), so pins are scaled to DISP.
 const ART_W = 440;
 const ART_H = 140;
-const DISP_W = 108;
+const DISP_W = 216; // rendered width on the canvas — big enough that the 3 header pins are easy to grab
 const DISP_H = (DISP_W * ART_H) / ART_W; // keep the aspect ratio
 const SX = DISP_W / ART_W;
 const SY = DISP_H / ART_H;

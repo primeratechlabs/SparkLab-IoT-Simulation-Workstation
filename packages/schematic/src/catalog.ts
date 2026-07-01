@@ -790,7 +790,7 @@ export const COMPONENT_CATALOG = {
         max: 100,
       },
     ],
-    size: { w: 108, h: 34 }, // 65×20mm real board → the design's 440×140 art, rendered ~3.25:1
+    size: { w: 216, h: 69 }, // 65×20mm real board → the design's 440×140 art, rendered ~3.14:1 (2× for grab)
     build: (c) => {
       const ch = c.analog('sig');
       // AnalogSensor's default Vref is 5 V — matches the K-0135's 5 V operation: on a 5 V ADC (Uno) the
