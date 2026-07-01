@@ -954,6 +954,12 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
   // ── drag (pointer-captured on the canvas; clamped to bounds) ──────────────────
   let dragCid: string | null = null;
   let dragOff = { x: 0, y: 0 };
+  // An interactive part (button/pot) must stay operable by its own wokwi element — pressing it can NOT
+  // capture the pointer up-front (that swallows the element's mouseup → the press sticks / never fires).
+  // So we ARM a drag on pointerdown and only COMMIT it once the pointer travels past a small threshold:
+  // a stationary press is a press (feedback in edit AND run mode), a press-and-move is a drag.
+  let pendingDrag: { cid: string; x0: number; y0: number } | null = null;
+  const DRAG_THRESHOLD = 4; // client px the pointer must travel before a press becomes a drag
   /** Content width/height (the un-scaled layer box) used to clamp a dragged part on-canvas. */
   function contentSize(): { w: number; h: number } {
     const rect = canvasEl.value?.getBoundingClientRect();
@@ -971,6 +977,13 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     dragOff = { x: c.x - origin.x, y: c.y - origin.y };
     canvasEl.value.setPointerCapture?.(e.pointerId);
   }
+  /** Arm a press-or-drag on an interactive part: select it now, but defer the actual drag (and pointer
+   *  capture) until the pointer moves — so its wokwi element receives the full press/release. */
+  function armDrag(e: PointerEvent, cid: string): void {
+    selected.value = cid;
+    selectedWire.value = null;
+    pendingDrag = { cid, x0: e.clientX, y0: e.clientY };
+  }
   function onDrag(e: PointerEvent): void {
     if (dragCid === null || !canvasEl.value) return;
     const target = dragCid === BOARD_CID ? boardPos : placed.value.find((q) => q.cid === dragCid);
@@ -981,14 +994,24 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     target.y = clamp(Math.round(c.y - dragOff.y), 0, h - PART_MARGIN);
   }
   function endDrag(): void {
+    pendingDrag = null; // a press that never crossed the threshold = a tap, not a drag
     if (dragCid !== null && dragCid !== BOARD_CID) snapToBreadboard(dragCid); // seat pins into holes
     dragCid = null;
   }
-  /** Canvas pointer-move: track the cursor (rubber-band) and forward to the active part drag. */
+  /** Canvas pointer-move: track the cursor (rubber-band), promote an armed press into a drag once it
+   *  travels past the threshold, then forward to the active part drag. */
   function onMove(e: PointerEvent): void {
     const c = clientToContent(e);
     mouse.x = c.x;
     mouse.y = c.y;
+    if (pendingDrag && dragCid === null) {
+      const moved = Math.hypot(e.clientX - pendingDrag.x0, e.clientY - pendingDrag.y0);
+      if (moved >= DRAG_THRESHOLD) {
+        const cid = pendingDrag.cid;
+        pendingDrag = null;
+        startDrag(e, cid); // capture + un-seat + offset from the current cursor (no jump)
+      }
+    }
     onDrag(e);
   }
 
@@ -1051,6 +1074,7 @@ export function useCircuitCanvas(canvasEl: Ref<HTMLElement | null>, boardIdRef?:
     pendingName,
     // drag
     startDrag,
+    armDrag,
     onDrag,
     endDrag,
     onMove,

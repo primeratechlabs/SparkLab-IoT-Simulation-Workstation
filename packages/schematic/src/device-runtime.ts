@@ -31,6 +31,8 @@ import {
   HcSr04,
   LcdI2c,
   Ssd1306,
+  Ds1307,
+  Mpu6050,
   Ws2812,
   Ldr,
   Ntc,
@@ -271,6 +273,16 @@ export const DEVICE_RUNTIME: { [T in DrawableComponentType]: DeviceRuntimeModel 
       for (const b of d.buffer) lit += popcount(b);
       return { kind: 'i2c-device', width: d.width, height: d.height, litPixels: lit, on: lit > 0 };
     },
+  },
+  ds1307: {
+    kind: 'i2c-device',
+    reflect: (c) => ({ kind: 'i2c-device', text: (c as Ds1307).isoTime }),
+    applyProp: (c, name, v) => (c as Ds1307).applyField(name, Number(v)),
+  },
+  mpu6050: {
+    kind: 'i2c-device',
+    reflect: (c) => ({ kind: 'i2c-device', text: (c as Mpu6050).accelText }),
+    applyProp: (c, name, v) => (c as Mpu6050).applyField(name, Number(v)),
   },
   ws2812: {
     kind: 'ws2812',

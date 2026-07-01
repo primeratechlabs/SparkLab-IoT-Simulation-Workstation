@@ -21,6 +21,8 @@ export * from './digital-sensor.js';
 export * from './analog-sensor.js';
 export * from './lcd-i2c.js';
 export * from './ssd1306.js';
+export * from './ds1307.js';
+export * from './mpu6050.js';
 export * from './ws2812.js';
 export * from './seven-segment.js';
 export * from './led-bar-graph.js';

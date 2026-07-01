@@ -16,7 +16,6 @@ import {
   COMPONENT_CATALOG,
   wokwiTagFor,
   wokwiBoardTagFor,
-  isLiveOperated,
   isAnalogSensor,
   interactionOf,
   LED_COLORS,
@@ -175,6 +174,16 @@ function propsFor(p: Placed): Record<string, unknown> {
 function partTransform(p: Placed): string {
   return `rotate(${p.rot}deg) scaleX(${p.flip ? -1 : 1})`;
 }
+/**
+ * Whether the wokwi element receives pointer events. A BUTTON is ALWAYS live so it can be pressed (and
+ * give tactile feedback) even before Run — `armDrag` keeps it draggable. Every other part is pointer-
+ * transparent in edit mode so a drag is grabbed cleanly by the wrapper, and live while running (a pot
+ * turns; the rest just stay selectable). `undefined` = inherit (auto).
+ */
+function hostPointerEvents(p: Placed): 'none' | undefined {
+  if (interactionOf(p.type) === 'button') return undefined;
+  return props.running ? undefined : 'none';
+}
 function boardTransform(): string {
   return `rotate(${canvas.boardRot.value}deg)`;
 }
@@ -205,10 +214,24 @@ watch(canvasSnapshot, (s) => emit('state', s), { deep: true });
 // element; `isAnalogSensor` = external stimulus slider. Gas/flame are deliberately neither — they carry a
 // `level` (0–100%) prop applied live via the device-runtime, so Run never re-seeds them to a default that
 // would clobber the configured level (the multi-device UX risk).
-/** While running, an interactive part is operated (press/turn) rather than dragged; otherwise it drags. */
+/**
+ * How a placed part responds to a pointerdown:
+ *  - BUTTON: operated by a STATIONARY press, which must reach its wokwi element — so we never capture the
+ *    pointer up-front; `armDrag` defers the part-drag until the pointer travels past a threshold (a press
+ *    is a press, a press-and-move drags). The button is therefore pressable in BOTH edit and run mode (no
+ *    "dead button" before Run) yet still draggable.
+ *  - POT (while running): operated by TURNING its knob (a drag on the element), so the part itself must
+ *    NOT move — select only, let the wokwi element consume the drag.
+ *  - everything else (and the pot in edit mode): drag the part immediately.
+ */
 function onPartDown(e: PointerEvent, p: Placed): void {
-  if (props.running && isLiveOperated(p.type)) {
-    canvas.selectPart(p.cid); // let the wokwi element handle the press/turn; don't move the part
+  const kind = interactionOf(p.type);
+  if (kind === 'button') {
+    canvas.armDrag(e, p.cid);
+    return;
+  }
+  if (props.running && kind === 'pot') {
+    canvas.selectPart(p.cid);
     return;
   }
   canvas.startDrag(e, p.cid);
@@ -683,7 +706,7 @@ onBeforeUnmount(() => {
             <component
               :is="p.tag"
               class="wokwi-host"
-              :style="{ transform: partTransform(p), pointerEvents: running ? undefined : 'none' }"
+              :style="{ transform: partTransform(p), pointerEvents: hostPointerEvents(p) }"
               v-bind="propsFor(p)"
               @button-press="onButton(p, true)"
               @button-release="onButton(p, false)"

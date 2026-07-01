@@ -24,6 +24,8 @@ import {
   HcSr04,
   LcdI2c,
   Ssd1306,
+  Ds1307,
+  Mpu6050,
   Ws2812,
   DigitalSensor,
   AnalogSensor,
@@ -501,6 +503,107 @@ export const COMPONENT_CATALOG = {
     size: { w: 96, h: 64 },
     build: (c) => new Ssd1306(c.id, coerceI2cAddress(c.props, SSD1306_I2C_ADDR)),
     i2cAddress: (p) => coerceI2cAddress(p, SSD1306_I2C_ADDR),
+  },
+
+  ds1307: {
+    type: 'ds1307',
+    displayName: 'Đồng hồ thời gian thực (DS1307)',
+    category: 'sensor',
+    description:
+      'RTC DS1307 trên bus I²C (0x68). Giữ giây/phút/giờ/ngày/tháng/năm (BCD) và tự chạy 1 giây mỗi giây ảo; sketch đặt/đọc giờ qua RTClib hoặc Wire.',
+    tags: ['rtc', 'clock', 'ds1307', 'time', 'i2c'],
+    kind: 'i2c-device',
+    pins: [
+      { name: 'sda', type: 'i2c-sda', x: 0, y: 0 },
+      { name: 'scl', type: 'i2c-scl', x: 0, y: 12 },
+      { name: 'vcc', type: 'power', x: 0, y: 24 },
+      { name: 'gnd', type: 'ground', x: 0, y: 36 },
+    ],
+    properties: [
+      {
+        name: 'hour',
+        label: 'Giờ (0–23)',
+        type: 'number',
+        default: 12,
+        control: 'number',
+        min: 0,
+        max: 23,
+      },
+      {
+        name: 'minute',
+        label: 'Phút (0–59)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: 0,
+        max: 59,
+      },
+    ],
+    size: { w: 56, h: 48 },
+    build: (c) =>
+      new Ds1307(c.id, { hour: num(c.props, 'hour', 12), minute: num(c.props, 'minute', 0) }),
+    i2cAddress: () => 0x68,
+  },
+
+  mpu6050: {
+    type: 'mpu6050',
+    displayName: 'Cảm biến gia tốc/con quay (MPU6050)',
+    category: 'sensor',
+    description:
+      'IMU 6 trục MPU6050 trên I²C (0x68): WHO_AM_I + thanh ghi gia tốc/nhiệt độ/con quay 16-bit. Nghỉ đọc +1g trên trục Z; nghiêng/lắc đặt qua inspector để sketch đọc vector thật.',
+    tags: ['mpu6050', 'imu', 'accelerometer', 'gyroscope', 'i2c', 'motion'],
+    kind: 'i2c-device',
+    pins: [
+      { name: 'sda', type: 'i2c-sda', x: 0, y: 0 },
+      { name: 'scl', type: 'i2c-scl', x: 0, y: 12 },
+      { name: 'vcc', type: 'power', x: 0, y: 24 },
+      { name: 'gnd', type: 'ground', x: 0, y: 36 },
+    ],
+    properties: [
+      {
+        name: 'accelX',
+        label: 'Gia tốc X (g)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: -8,
+        max: 8,
+        step: 0.1,
+      },
+      {
+        name: 'accelY',
+        label: 'Gia tốc Y (g)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: -8,
+        max: 8,
+        step: 0.1,
+      },
+      {
+        name: 'accelZ',
+        label: 'Gia tốc Z (g)',
+        type: 'number',
+        default: 1,
+        control: 'number',
+        min: -8,
+        max: 8,
+        step: 0.1,
+      },
+      { name: 'gyroX', label: 'Con quay X (°/s)', type: 'number', default: 0, control: 'number' },
+      { name: 'gyroY', label: 'Con quay Y (°/s)', type: 'number', default: 0, control: 'number' },
+      { name: 'gyroZ', label: 'Con quay Z (°/s)', type: 'number', default: 0, control: 'number' },
+      { name: 'temp', label: 'Nhiệt độ (°C)', type: 'number', default: 25, control: 'number' },
+    ],
+    size: { w: 64, h: 40 },
+    build: (c) => {
+      const m = new Mpu6050(c.id);
+      m.setAccel(num(c.props, 'accelX', 0), num(c.props, 'accelY', 0), num(c.props, 'accelZ', 1));
+      m.setGyro(num(c.props, 'gyroX', 0), num(c.props, 'gyroY', 0), num(c.props, 'gyroZ', 0));
+      m.setTemp(num(c.props, 'temp', 25));
+      return m;
+    },
+    i2cAddress: () => 0x68,
   },
 
   ws2812: {
@@ -1163,6 +1266,8 @@ export const WOKWI_ELEMENT: { [T in CatalogComponentType]: string } = {
   hcsr04: 'wokwi-hc-sr04',
   'lcd-i2c': 'wokwi-lcd1602',
   ssd1306: 'wokwi-ssd1306',
+  ds1307: 'wokwi-ds1307',
+  mpu6050: 'wokwi-mpu6050',
   ws2812: 'wokwi-neopixel',
   pir: 'wokwi-pir-motion-sensor',
   tilt: 'wokwi-tilt-switch',
@@ -1211,6 +1316,10 @@ export const COMPONENT_PIN_ALIAS: { [T in CatalogComponentType]: Record<string, 
   'lcd-i2c': { SDA: 'sda', SCL: 'scl', VCC: 'vcc', GND: 'gnd' },
   // ssd1306: the wokwi element is SPI-bodied but DATA/CLK carry the I²C SDA/SCL lines.
   ssd1306: { DATA: 'sda', CLK: 'scl', VIN: 'vcc', '3V3': 'vcc', GND: 'gnd' },
+  // ds1307 RTC backpack: I²C SDA/SCL + 5V/GND (SQW unused).
+  ds1307: { SDA: 'sda', SCL: 'scl', '5V': 'vcc', GND: 'gnd' },
+  // mpu6050 IMU: I²C SDA/SCL + VCC/GND (INT/AD0/XCL/XDA not modelled).
+  mpu6050: { SDA: 'sda', SCL: 'scl', VCC: 'vcc', GND: 'gnd' },
   // ws2812 (wokwi neopixel): DIN is the control input, DOUT chains to the next pixel.
   ws2812: { DIN: 'din', DOUT: 'dout', VDD: 'vcc', VSS: 'gnd' },
   // relay (wokwi ks2e bare relay): the coil terminals are the control (COIL1) + return (COIL2).

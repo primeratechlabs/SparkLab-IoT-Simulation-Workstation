@@ -53,8 +53,8 @@ function ctx(over: Partial<BuildContext>): BuildContext {
 }
 
 describe('catalog — integrity', () => {
-  it('registers the 34 built-in components, each well-formed', () => {
-    expect(CATALOG_TYPES).toHaveLength(34);
+  it('registers the 36 built-in components, each well-formed', () => {
+    expect(CATALOG_TYPES).toHaveLength(36);
     for (const type of CATALOG_TYPES) {
       const e = catalogEntry(type)!;
       expect(e.type).toBe(type); // key matches entry.type
