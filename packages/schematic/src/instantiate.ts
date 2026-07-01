@@ -40,7 +40,7 @@ export function instantiateComponents(doc: CircuitDocument): InstantiateResult {
     // Electrical-topology gate: an invalid circuit (no GND return, reversed LED, missing rail/bus)
     // is NOT instantiated — it reports its wiring issue instead of silently "working".
     const ready = readiness.get(c.id);
-    if (entry.kind !== 'resistor' && ready && !ready.ok) {
+    if (entry.category !== 'passive' && ready && !ready.ok) {
       issues.push({
         componentId: c.id,
         type: c.type,
@@ -57,7 +57,7 @@ export function instantiateComponents(doc: CircuitDocument): InstantiateResult {
     const sim = entry.build(ctx);
     if (sim) {
       components.push(sim);
-    } else if (entry.kind !== 'resistor') {
+    } else if (entry.category !== 'passive') {
       issues.push({
         componentId: c.id,
         type: c.type,

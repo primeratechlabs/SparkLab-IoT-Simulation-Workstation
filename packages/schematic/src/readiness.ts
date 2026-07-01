@@ -43,7 +43,9 @@ function statusFor(
 ): ReadinessStatus {
   const entry = catalogEntry(type);
   if (!entry) return { ok: false, issues: ['Loại linh kiện không xác định'] };
-  if (entry.kind === 'resistor') return { ok: true, issues: [] }; // passive: netlist-only, always "ready"
+  // Passive parts (resistor, breadboard) are pure netlist substrate (build() → null) — never signal
+  // devices, so they have no power/ground/GPIO requirement and are always "ready" (no spurious warning).
+  if (entry.category === 'passive') return { ok: true, issues: [] };
 
   const gnd = (pin: string): boolean =>
     reaches(graph, doc, compId, pin, (bp) => bp?.type === 'ground');
