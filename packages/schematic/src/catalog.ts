@@ -763,6 +763,45 @@ export const COMPONENT_CATALOG = {
     },
   },
 
+  'water-level': {
+    type: 'water-level',
+    displayName: 'Cảm biến mực nước',
+    category: 'sensor',
+    // Keyes K-0135 analog water level sensor (per nivel_de_agua_analogico.pdf): DC 5V, <20mA, analog out,
+    // detection area 40×16mm. The exposed parallel comb traces bridge as water rises → chân S xuất điện áp
+    // analog tỉ lệ chiều dài ngập (đọc bằng analogRead; càng ngập càng cao). Nguồn 5V (VCC → VIN/5V).
+    description:
+      'Cảm biến mực nước analog Keyes K-0135 (5V) — lược dẫn điện, chân S xuất điện áp tỉ lệ mực nước ngập; đọc bằng analogRead. Càng ngập giá trị càng cao.',
+    tags: ['water', 'level', 'liquid', 'sensor', 'analog', 'k-0135'],
+    kind: 'water',
+    pins: [
+      { name: 'sig', type: 'analog', x: 0, y: 0 },
+      { name: 'vcc', type: 'power', x: 0, y: 12 },
+      { name: 'gnd', type: 'ground', x: 0, y: 24 },
+    ],
+    properties: [
+      {
+        name: 'level',
+        label: 'Mực nước ngập lược (0–100%)',
+        type: 'number',
+        default: 40,
+        control: 'number',
+        min: 0,
+        max: 100,
+      },
+    ],
+    size: { w: 108, h: 34 }, // 65×20mm real board → the design's 440×140 art, rendered ~3.25:1
+    build: (c) => {
+      const ch = c.analog('sig');
+      // AnalogSensor's default Vref is 5 V — matches the K-0135's 5 V operation: on a 5 V ADC (Uno) the
+      // reading spans 0..1023 (the datasheet's alarm example fires at ~700 ≈ 68 %); on a 3.3 V ADC (ESP32)
+      // it saturates above ~66 %, exactly as a 5 V sensor does un-level-shifted. So no Vref override here.
+      return ch === undefined
+        ? null
+        : new AnalogSensor(c.id, ch, { value: num(c.props, 'level', 40) / 100 });
+    },
+  },
+
   'slide-potentiometer': {
     type: 'slide-potentiometer',
     displayName: 'Chiết áp trượt',
@@ -1574,6 +1613,7 @@ export const WOKWI_ELEMENT: { [T in CatalogComponentType]: string } = {
   tilt: 'wokwi-tilt-switch',
   gas: 'wokwi-gas-sensor',
   flame: 'wokwi-flame-sensor',
+  'water-level': 'sparklab-water-sensor', // vendored (wokwi has none) — packages/app/src/lib/water-sensor-element.ts
   'slide-potentiometer': 'wokwi-slide-potentiometer',
   'pushbutton-6mm': 'wokwi-pushbutton-6mm',
   'slide-switch': 'wokwi-slide-switch',
@@ -1623,6 +1663,8 @@ export const COMPONENT_PIN_ALIAS: { [T in CatalogComponentType]: Record<string, 
   tilt: { OUT: 'sig', VCC: 'vcc', GND: 'gnd' },
   gas: { AOUT: 'sig', VCC: 'vcc', GND: 'gnd' },
   flame: { AOUT: 'sig', VCC: 'vcc', GND: 'gnd' },
+  // water-level: the vendored <sparklab-water-sensor> header — S(signal)/+(VCC)/−(GND).
+  'water-level': { SIG: 'sig', VCC: 'vcc', GND: 'gnd' },
   'lcd-i2c': { SDA: 'sda', SCL: 'scl', VCC: 'vcc', GND: 'gnd' },
   // ssd1306: the wokwi element is SPI-bodied but DATA/CLK carry the I²C SDA/SCL lines.
   ssd1306: { DATA: 'sda', CLK: 'scl', VIN: 'vcc', '3V3': 'vcc', GND: 'gnd' },

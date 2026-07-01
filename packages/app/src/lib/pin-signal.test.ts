@@ -18,4 +18,15 @@ describe('wireColor — signal-typed wire colouring', () => {
     expect(a).not.toBe(b);
     expect(wireColor('11', 'A', 6)).toBe(a); // palette has 6 entries → wraps
   });
+  it('reads the breadboard RAIL role (− rails = GND, + rails = power)', () => {
+    expect(wireColor('C', 'tn15', 0)).toBe('#3B3530'); // LED cathode → top − rail = ground
+    expect(wireColor('GND', 'bn3', 1)).toBe('#3B3530'); // bottom − rail = ground
+    expect(wireColor('V+', 'tp5', 2)).toBe('#D7503B'); // servo V+ → top + rail = power
+    expect(wireColor('VCC', 'bp9', 3)).toBe('#D7503B'); // bottom + rail = power
+    expect(wireColor('sig', 'e7', 4)).not.toMatch(/#3B3530|#D7503B/); // a column hole is a signal net
+  });
+  it('recognises component power pin names (VCC / V+) as power', () => {
+    expect(wireColor('VCC', 'AO', 0)).toBe('#D7503B');
+    expect(wireColor('PWM', 'V+', 1)).toBe('#D7503B');
+  });
 });

@@ -37,6 +37,7 @@ export type ComponentKind =
   | 'pir'
   | 'gas'
   | 'flame'
+  | 'water'
   | 'tilt'
   | 'switch'
   | 'sound'

@@ -12,6 +12,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import '@wokwi/elements';
 import '../lib/breadboard-element'; // vendored <sparklab-breadboard> (wokwi has none) — registers on import
+import '../lib/water-sensor-element'; // vendored <sparklab-water-sensor> (wokwi has none) — registers on import
 import {
   COMPONENT_CATALOG,
   wokwiTagFor,
@@ -167,6 +168,9 @@ function propsFor(p: Placed): Record<string, unknown> {
       const a = props.devices?.[p.cid]?.angleDeg;
       return { angle: typeof a === 'number' && a >= 0 ? a : 0 };
     }
+    case 'water-level':
+      // the water level the probe is submerged in (a scene parameter, like HC-SR04 distance) drives the fill.
+      return { level: Number(p.props.level ?? 40) };
     default:
       return {};
   }

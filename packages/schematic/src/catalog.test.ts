@@ -36,6 +36,7 @@ const KNOWN_KINDS = new Set([
   'pir',
   'gas',
   'flame',
+  'water',
   'tilt',
   'switch',
   'sound',
@@ -61,7 +62,7 @@ function ctx(over: Partial<BuildContext>): BuildContext {
 
 describe('catalog — integrity', () => {
   it('registers the 45 built-in components, each well-formed', () => {
-    expect(CATALOG_TYPES).toHaveLength(45);
+    expect(CATALOG_TYPES).toHaveLength(46);
     for (const type of CATALOG_TYPES) {
       const e = catalogEntry(type)!;
       expect(e.type).toBe(type); // key matches entry.type

@@ -32,7 +32,8 @@
     "@sqlite.org/sqlite-wasm": "^3.49.1-build2",
     "@wokwi/elements": "^1.9.2",
     "comlink": "^4.4.2",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "lit": "^3.3.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",

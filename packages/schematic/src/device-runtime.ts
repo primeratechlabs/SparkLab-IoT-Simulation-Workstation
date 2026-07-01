@@ -266,6 +266,18 @@ export const DEVICE_RUNTIME: { [T in DrawableComponentType]: DeviceRuntimeModel 
       return true;
     },
   },
+  'water-level': {
+    kind: 'water',
+    reflect: (c) => {
+      const d = c as AnalogSensor;
+      return { kind: 'water', adc: d.value };
+    },
+    applyProp: (c, name, v) => {
+      if (name !== 'level') return false;
+      (c as AnalogSensor).setValue(Number(v) / 100);
+      return true;
+    },
+  },
   'lcd-i2c': {
     kind: 'i2c-device',
     reflect: (c) => {
