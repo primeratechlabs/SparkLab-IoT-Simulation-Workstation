@@ -113,6 +113,9 @@ public:
   unsigned int println(unsigned long long n, int base);
   unsigned int println(double n, int digits);
   unsigned int println(void); // Serial.println() with no args
+  // Serial.printf(fmt, …) — arduino-esp32's Print extension (Print.h). Formats through the real picolibc
+  // vsnprintf (same path snprintf already uses here), then writes the bytes to the UART.
+  unsigned int printf(const char *format, ...);
 };
 class HardwareSerial : public Print {
 public:
@@ -227,6 +230,20 @@ unsigned int Print::print(double n, int digits) {
 unsigned int Print::println(long long n, int base) { return print(n, base) + println(); }
 unsigned int Print::println(unsigned long long n, int base) { return print(n, base) + println(); }
 unsigned int Print::println(double n, int digits) { return print(n, digits) + println(); }
+// Serial.printf: format into a stack buffer via picolibc vsnprintf (varargs via compiler builtins — the
+// shim is freestanding, no <stdarg.h>), then emit. Truncates at the buffer, never overruns.
+extern "C" int vsnprintf(char *, __SIZE_TYPE__, const char *, __builtin_va_list);
+unsigned int Print::printf(const char *format, ...) {
+  char buf[128];
+  __builtin_va_list ap;
+  __builtin_va_start(ap, format);
+  int n = vsnprintf(buf, sizeof(buf), format, ap);
+  __builtin_va_end(ap);
+  if (n <= 0) return 0;
+  unsigned int count = (unsigned int)(n < (int)sizeof(buf) ? n : (int)sizeof(buf) - 1);
+  for (unsigned int i = 0; i < count; i++) UART_FIFO = (unsigned char)buf[i];
+  return count;
+}
 
 // String→number for Arduino's String::toInt()/toFloat()/toDouble() (which call atol/atof) + the common
 // atoi/atoll. Routed through the REAL picolibc sscanf (vfscanf — links + runs, see esp32-classic-printf
@@ -876,6 +893,31 @@ void delayMicroseconds(uint32_t us) {
   uint32_t start = SYS_MICROS;
   while ((uint32_t)(SYS_MICROS - start) < us) {
   }
+}
+
+/* Arduino map() — the SDK declares it OUTSIDE extern "C" (C++ linkage, _Z3maplllll). We're inside this
+ * file's `extern "C"` block, so force C++ linkage with extern "C++" or the mangled name won't match. The
+ * divide-by-zero guard keeps a degenerate range (in_min==in_max) from trapping the interpreter. */
+extern "C++" long map(long x, long in_min, long in_max, long out_min, long out_max) {
+  long divisor = in_max - in_min;
+  if (divisor == 0) return out_min;
+  return (x - in_min) * (out_max - out_min) / divisor + out_min;
+}
+
+/* pulseIn() — measure a HIGH/LOW pulse width in µs (extern "C" in the SDK Arduino.h). The busy-waits
+ * retire instructions, which advance the cycle-derived virtual clock (I3), so a sensor model that drives
+ * the pin on a schedule (HC-SR04 ECHO) is seen at the right virtual time. Returns 0 on timeout. */
+extern "C" unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout) {
+  uint32_t start = SYS_MICROS;
+  const unsigned int want = state ? 1u : 0u;
+  while (((GPIO_IN >> pin) & 1u) == want)
+    if ((uint32_t)(SYS_MICROS - start) >= timeout) return 0; // a previous pulse must end first
+  while (((GPIO_IN >> pin) & 1u) != want)
+    if ((uint32_t)(SYS_MICROS - start) >= timeout) return 0; // wait for the pulse to begin
+  uint32_t rise = SYS_MICROS;
+  while (((GPIO_IN >> pin) & 1u) == want)
+    if ((uint32_t)(SYS_MICROS - start) >= timeout) return 0; // measure how long it stays asserted
+  return (unsigned long)(SYS_MICROS - rise);
 }
 
 /* Sim heap for libc's malloc: a bump allocator over a fixed .bss region. The emulator RAM is a fresh
