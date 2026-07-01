@@ -137,9 +137,13 @@ function esp32ClassicPins(): BoardPin[] {
   analogOnly.forEach(([name, , adcChannel], i) => {
     pins.push({ name, type: 'analog', adcChannel, x: 0, y: 180 + i * 16 });
   });
+  // Power/ground pins must be the names the canvas→document bridge (aliasBoardPin) emits for the wokwi
+  // esp32-devkit-v1 header: VIN + 3V3 (VIN was MISSING → a device wired to VIN failed the "reaches a board
+  // power pin" readiness check and was silently dropped), and GND (aliasBoardPin folds GND.1/GND.2 → GND).
+  // The element has no plain '5V' pin, so it is not declared here.
   pins.push({ name: '3V3', type: 'power', x: 120, y: 180 });
-  pins.push({ name: '5V', type: 'power', x: 120, y: 196 });
-  pins.push({ name: 'GND', type: 'ground', x: 120, y: 212 });
+  pins.push({ name: 'VIN', type: 'power', x: 120, y: 196 }); // 5V input rail (servo/HC-SR04 VCC)
+  pins.push({ name: 'GND', type: 'ground', x: 120, y: 212 }); // aliasBoardPin folds GND.1/GND.2 → GND
   return pins;
 }
 
@@ -174,7 +178,7 @@ export const BOARD_CATALOG: Record<string, BoardCatalogEntry> = {
     size: { w: 200, h: 240 },
     pins: esp32ClassicPins(),
     vccPin: '3V3',
-    gndPin: 'GND',
+    gndPin: 'GND', // aliasBoardPin folds the wokwi header's GND.1/GND.2 → 'GND' (the canonical net)
     onboardLedPin: 2, // ESP32 DevKit on-board LED on GPIO2
   },
 };

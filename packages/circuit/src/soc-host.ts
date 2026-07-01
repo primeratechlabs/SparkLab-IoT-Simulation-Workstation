@@ -9,10 +9,12 @@
  * `beforeStep` hook) to fire due scheduled events + per-instruction sensor ticks — the same
  * "apply inputs before the instruction reads the pin" ordering Circuit uses (invariant I3).
  *
- * NOTE on fidelity: the SoC sim clock is coarse (≈20µs/cycle) vs AVR's 62.5ns, so sub-µs 1-wire/echo
- * timing (DHT/HC-SR04) is AVR-grade only; transaction/level devices (LED reflect, I²C LCD/OLED, ADC
- * sensors, digital input, PWM duty) are full fidelity on the SoC. Every device still ATTACHES on all
- * backends (the conformance lock requires it).
+ * NOTE on fidelity: the SoC sim clock is now µs-granular (1 cycle = 1µs; see xtensa-runner/rv32-runner
+ * DEFAULT_CYCLES_PER_MS) vs AVR's 62.5ns, so µs-scale 1-wire/echo timing (DHT/HC-SR04, pulseIn) WORKS
+ * (echo widths read to ±1µs → HC-SR04 within ~1cm, real-sensor grade) — it used to read 0 at the old
+ * 20µs/cycle because the firmware's instruction latency overshot the echo-start delay. Transaction/level
+ * devices (LED reflect, I²C LCD/OLED, ADC sensors, digital input, PWM duty) are full fidelity. Every
+ * device still ATTACHES on all backends (the conformance lock requires it).
  */
 import type { CircuitHost, DriveLevel, SimComponent } from '@sparklab/components-core';
 import { SpiBus, type I2cDevice, type SpiDevice } from '@sparklab/sim-kernel';

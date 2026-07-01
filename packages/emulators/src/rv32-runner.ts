@@ -31,7 +31,12 @@ import { elfLoad } from './elf-load.js';
 
 const RAM_SIZE = 0x100000; // 1 MiB — room for a libc/libstdc++-linked firmware + its malloc heap + stack
 const STACK_TOP = 0xf0000; // stack grows down from 960 KiB; the sbrk heap grows up from the firmware .bss
-const DEFAULT_CYCLES_PER_MS = 50; // sim throughput mapping (low → delay() loops cost few cycles)
+// 1 cycle = 1 µs (1 MHz model) — instruction latency small vs the µs timings a sketch measures (pulseIn /
+// HC-SR04 / DHT echo windows, delayMicroseconds). At the old 50 (20µs/instruction) the ~18 instructions
+// between a TRIG pulse and pulseIn cost ~360µs, overshooting the ~250µs echo-start so pulseIn read 0.
+// Throughput-safe: the worker throttles to wall-clock, so finer = more instructions per tick (within the
+// step budget), same virtual-time-per-real-time. Mirrors xtensa-runner. See esp32-hcsr04 timing tests.
+const DEFAULT_CYCLES_PER_MS = 1000;
 const MAX_STEPS_PER_MS = 200_000; // guard against firmware spinning forever (bounded run per tick)
 
 /** Plain-language halt cause for the worker/UI. Separates a simulator limitation (an instruction the

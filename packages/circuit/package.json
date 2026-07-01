@@ -21,6 +21,7 @@
     "@sparklab/conformance": "workspace:*"
   },
   "devDependencies": {
-    "@sparklab/toolchain-loader": "workspace:*"
+    "@sparklab/toolchain-loader": "workspace:*",
+    "@sparklab/build-orchestrator": "workspace:*"
   }
 }

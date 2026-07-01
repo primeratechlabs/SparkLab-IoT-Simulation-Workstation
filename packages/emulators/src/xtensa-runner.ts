@@ -26,7 +26,15 @@ import { elfLoad } from './elf-load.js';
 
 const RAM_SIZE = 0x100000; // 1 MiB — room for a libc/libstdc++-linked firmware + its malloc heap + stack
 const STACK_TOP = 0xf0000; // stack grows down from 960 KiB; the sbrk heap grows up from the firmware .bss
-const DEFAULT_CYCLES_PER_MS = 50; // sim throughput mapping (low → delay() loops cost few cycles)
+// 1 cycle = 1 µs (a 1 MHz model). Chosen so INSTRUCTION latency (~1µs) is small vs the µs-scale timings a
+// sketch measures — pulseIn/HC-SR04/DHT echo windows, delayMicroseconds. At the old 50 (20µs/instruction)
+// the ~18 instructions between a TRIG pulse and pulseIn cost ~360µs of virtual time, OVERSHOOTING the
+// ~250µs HC-SR04 echo-start delay, so pulseIn arrived mid-echo and its "skip the in-progress pulse" guard
+// discarded the reading (dist=0). Finer is safe for THROUGHPUT: the sim.worker throttles to wall-clock
+// (executeForMillis(virtualMs) + setTimeout), so more cycles/ms means more instructions PER TICK (well
+// within the step budget) but the SAME virtual-time-per-real-time — behaviour is unchanged, timing is
+// just measured at ~µs resolution instead of ~20µs.
+const DEFAULT_CYCLES_PER_MS = 1000;
 const MAX_STEPS_PER_MS = 200_000; // guard against firmware spinning forever (bounded run per tick)
 
 /** Plain-language halt cause for the worker/UI. 'break' is an intentional abort/__builtin_trap; any
