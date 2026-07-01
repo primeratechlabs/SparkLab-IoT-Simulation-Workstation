@@ -34,6 +34,12 @@ import {
   DipSwitch,
   Joystick,
   RotaryEncoder,
+  StepperMotor,
+  BiaxialStepper,
+  MembraneKeypad,
+  KEYPAD_4X4,
+  Hx711,
+  RotaryDialer,
 } from '@sparklab/components-core';
 import type { ComponentKind } from '@sparklab/sim-kernel';
 import type { PinType, PropValue } from './types.js';
@@ -1202,6 +1208,199 @@ export const COMPONENT_CATALOG = {
     },
   },
 
+  'stepper-motor': {
+    type: 'stepper-motor',
+    displayName: 'Động cơ bước',
+    category: 'actuator',
+    description:
+      'Động cơ bước lưỡng cực 4 dây (A+/A−/B+/B−). Quay theo trình tự cấp điện cuộn dây: firmware (thư viện Stepper hoặc vòng 4/8 bước) đẩy trục quay đúng chiều, đúng số bước.',
+    tags: ['stepper', 'motor', 'actuator', 'rotation'],
+    kind: 'stepper',
+    pins: [
+      { name: 'aPlus', type: 'digital', x: 0, y: 0 },
+      { name: 'aMinus', type: 'digital', x: 8, y: 0 },
+      { name: 'bPlus', type: 'digital', x: 16, y: 0 },
+      { name: 'bMinus', type: 'digital', x: 24, y: 0 },
+    ],
+    properties: [
+      {
+        name: 'stepsPerRev',
+        label: 'Số bước/vòng',
+        type: 'number',
+        default: 2048,
+        control: 'number',
+        min: 4,
+      },
+    ],
+    size: { w: 64, h: 64 },
+    build: (c) => {
+      const pins = {
+        aPlus: c.digital('aPlus'),
+        aMinus: c.digital('aMinus'),
+        bPlus: c.digital('bPlus'),
+        bMinus: c.digital('bMinus'),
+      };
+      if (Object.values(pins).every((p) => p === undefined)) return null;
+      return new StepperMotor(c.id, pins, num(c.props, 'stepsPerRev', 2048));
+    },
+  },
+
+  'biaxial-stepper': {
+    type: 'biaxial-stepper',
+    displayName: 'Động cơ bước 2 trục',
+    category: 'actuator',
+    description:
+      'Hai động cơ bước lưỡng cực độc lập (trục 1: A1±/B1±, trục 2: A2±/B2±) — kiểu máy vẽ/CNC. Mỗi trục quay theo trình tự cuộn dây riêng.',
+    tags: ['stepper', 'biaxial', 'motor', 'plotter', 'cnc', 'actuator'],
+    kind: 'stepper',
+    pins: [
+      { name: 'a1Plus', type: 'digital', x: 0, y: 0 },
+      { name: 'a1Minus', type: 'digital', x: 8, y: 0 },
+      { name: 'b1Plus', type: 'digital', x: 16, y: 0 },
+      { name: 'b1Minus', type: 'digital', x: 24, y: 0 },
+      { name: 'a2Plus', type: 'digital', x: 0, y: 12 },
+      { name: 'a2Minus', type: 'digital', x: 8, y: 12 },
+      { name: 'b2Plus', type: 'digital', x: 16, y: 12 },
+      { name: 'b2Minus', type: 'digital', x: 24, y: 12 },
+    ],
+    properties: [
+      {
+        name: 'stepsPerRev',
+        label: 'Số bước/vòng',
+        type: 'number',
+        default: 2048,
+        control: 'number',
+        min: 4,
+      },
+    ],
+    size: { w: 80, h: 80 },
+    build: (c) => {
+      const p1 = {
+        aPlus: c.digital('a1Plus'),
+        aMinus: c.digital('a1Minus'),
+        bPlus: c.digital('b1Plus'),
+        bMinus: c.digital('b1Minus'),
+      };
+      const p2 = {
+        aPlus: c.digital('a2Plus'),
+        aMinus: c.digital('a2Minus'),
+        bPlus: c.digital('b2Plus'),
+        bMinus: c.digital('b2Minus'),
+      };
+      if ([...Object.values(p1), ...Object.values(p2)].every((p) => p === undefined)) return null;
+      return new BiaxialStepper(c.id, p1, p2, num(c.props, 'stepsPerRev', 2048));
+    },
+  },
+
+  'membrane-keypad': {
+    type: 'membrane-keypad',
+    displayName: 'Bàn phím màng 4×4',
+    category: 'input',
+    description:
+      'Bàn phím ma trận 4×4 (4 hàng R1–R4 × 4 cột C1–C4). Nhấn phím nối hàng↔cột: khi firmware quét kéo hàng xuống LOW, cột đọc LOW — đúng ma trận thư viện Keypad giải mã. Chọn phím giữ ở inspector.',
+    tags: ['keypad', 'matrix', 'membrane', '4x4', 'input'],
+    kind: 'keypad',
+    pins: [
+      ...['r1', 'r2', 'r3', 'r4'].map((name, i) => ({
+        name,
+        type: 'digital' as PinType,
+        x: i * 8,
+        y: 0,
+      })),
+      ...['c1', 'c2', 'c3', 'c4'].map((name, i) => ({
+        name,
+        type: 'digital' as PinType,
+        x: i * 8,
+        y: 12,
+      })),
+    ],
+    properties: [
+      {
+        name: 'key',
+        label: 'Phím đang giữ',
+        type: 'string',
+        default: '',
+        control: 'select',
+        options: ['', ...KEYPAD_4X4],
+      },
+    ],
+    size: { w: 96, h: 112 },
+    build: (c) => {
+      const rows = ['r1', 'r2', 'r3', 'r4'].map((n) => c.digital(n));
+      const cols = ['c1', 'c2', 'c3', 'c4'].map((n) => c.digital(n));
+      if ([...rows, ...cols].every((p) => p === undefined)) return null;
+      const kp = new MembraneKeypad(c.id, rows, cols);
+      kp.setKey(String(c.props.key ?? ''));
+      return kp;
+    },
+  },
+
+  hx711: {
+    type: 'hx711',
+    displayName: 'HX711 (loadcell ADC)',
+    category: 'sensor',
+    description:
+      'Bộ khuếch đại + ADC 24-bit cho loadcell (cân). 2 dây SCK/DT: firmware xung SCK 24 lần, HX711 dịch ra từng bit trên DT (MSB trước); DT=LOW báo có dữ liệu. Đặt giá trị đọc ở inspector.',
+    tags: ['hx711', 'loadcell', 'adc', 'weight', 'scale', 'sensor'],
+    kind: 'loadcell',
+    pins: [
+      { name: 'dt', type: 'digital', x: 0, y: 0 },
+      { name: 'sck', type: 'digital', x: 12, y: 0 },
+      { name: 'vcc', type: 'power', x: 0, y: 12 },
+      { name: 'gnd', type: 'ground', x: 12, y: 12 },
+    ],
+    properties: [
+      {
+        name: 'raw',
+        label: 'Giá trị thô (24-bit)',
+        type: 'number',
+        default: 0x100000,
+        control: 'number',
+      },
+    ],
+    size: { w: 40, h: 56 },
+    build: (c) => {
+      const dt = c.digital('dt');
+      const sck = c.digital('sck');
+      if (dt === undefined || sck === undefined) return null;
+      const h = new Hx711(c.id, dt, sck);
+      h.setRaw(num(c.props, 'raw', 0x100000));
+      return h;
+    },
+  },
+
+  'rotary-dialer': {
+    type: 'rotary-dialer',
+    displayName: 'Đĩa quay số điện thoại',
+    category: 'input',
+    description:
+      'Đĩa quay số kiểu điện thoại cũ (quay số xung). Quay chữ số N phát N xung LOW trên chân PULSE (~10 xung/giây), chân DIAL đóng khi đang quay; firmware đếm xung để giải mã. Chọn số quay ở inspector.',
+    tags: ['rotary', 'dialer', 'phone', 'pulse', 'input'],
+    kind: 'dialer',
+    pins: [
+      { name: 'pulse', type: 'digital', x: 0, y: 0 },
+      { name: 'dial', type: 'digital', x: 12, y: 0 },
+      { name: 'gnd', type: 'ground', x: 24, y: 0 },
+    ],
+    properties: [
+      {
+        name: 'digit',
+        label: 'Quay số (0–9)',
+        type: 'number',
+        default: 0,
+        control: 'number',
+        min: 0,
+        max: 9,
+      },
+    ],
+    size: { w: 72, h: 72 },
+    build: (c) => {
+      const pulse = c.digital('pulse');
+      if (pulse === undefined) return null;
+      return new RotaryDialer(c.id, pulse, c.digital('dial'));
+    },
+  },
+
   breadboard: {
     type: 'breadboard',
     displayName: 'Breadboard (400 lỗ)',
@@ -1287,6 +1486,11 @@ export const WOKWI_ELEMENT: { [T in CatalogComponentType]: string } = {
   'dip-switch-8': 'wokwi-dip-switch-8',
   'led-bar-graph': 'wokwi-led-bar-graph',
   'ky-040': 'wokwi-ky-040',
+  'stepper-motor': 'wokwi-stepper-motor',
+  'biaxial-stepper': 'wokwi-biaxial-stepper',
+  'membrane-keypad': 'wokwi-membrane-keypad',
+  hx711: 'wokwi-hx711',
+  'rotary-dialer': 'wokwi-rotary-dialer',
   // breadboard: NOT in @wokwi/elements — our own vendored visual element (see app/lib/breadboard-element).
   breadboard: 'sparklab-breadboard',
 };
@@ -1368,6 +1572,34 @@ export const COMPONENT_PIN_ALIAS: { [T in CatalogComponentType]: Record<string, 
     ),
   ),
   'ky-040': { CLK: 'clk', DT: 'dt', SW: 'sw', VCC: 'vcc', GND: 'gnd' },
+  // stepper-motor (bipolar): the four coil terminals A±/B±.
+  'stepper-motor': { 'A+': 'aPlus', 'A-': 'aMinus', 'B+': 'bPlus', 'B-': 'bMinus' },
+  // biaxial-stepper: two coils' terminals (axis 1 = *1, axis 2 = *2).
+  'biaxial-stepper': {
+    'A1+': 'a1Plus',
+    'A1-': 'a1Minus',
+    'B1+': 'b1Plus',
+    'B1-': 'b1Minus',
+    'A2+': 'a2Plus',
+    'A2-': 'a2Minus',
+    'B2+': 'b2Plus',
+    'B2-': 'b2Minus',
+  },
+  // membrane-keypad: 4 rows + 4 columns of the scan matrix.
+  'membrane-keypad': {
+    R1: 'r1',
+    R2: 'r2',
+    R3: 'r3',
+    R4: 'r4',
+    C1: 'c1',
+    C2: 'c2',
+    C3: 'c3',
+    C4: 'c4',
+  },
+  // hx711: SCK clock + DT data (+ power).
+  hx711: { SCK: 'sck', DT: 'dt', VCC: 'vcc', GND: 'gnd' },
+  // rotary-dialer: PULSE train + DIAL off-normal contact.
+  'rotary-dialer': { PULSE: 'pulse', DIAL: 'dial', GND: 'gnd' },
   // breadboard: holes are resolved to net groups by the bridge (breadboardGroupOf), not a static alias.
   breadboard: {},
 };

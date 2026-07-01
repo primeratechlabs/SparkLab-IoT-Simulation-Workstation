@@ -45,6 +45,11 @@ import {
   DipSwitch,
   Joystick,
   RotaryEncoder,
+  StepperMotor,
+  BiaxialStepper,
+  MembraneKeypad,
+  Hx711,
+  RotaryDialer,
 } from '@sparklab/components-core';
 import { COMPONENT_CATALOG, type CatalogComponentType } from './catalog.js';
 import { instantiateComponents, type InstantiateIssue } from './instantiate.js';
@@ -450,6 +455,44 @@ export const DEVICE_RUNTIME: { [T in DrawableComponentType]: DeviceRuntimeModel 
         return true;
       }
       return false;
+    },
+  },
+  'stepper-motor': {
+    kind: 'stepper',
+    reflect: (c) => ({ kind: 'stepper', angleDeg: (c as StepperMotor).angleDeg }),
+  },
+  'biaxial-stepper': {
+    kind: 'stepper',
+    reflect: (c) => {
+      const d = c as BiaxialStepper;
+      return { kind: 'stepper', angleDeg: d.axis1.angleDeg, angle2: d.axis2.angleDeg };
+    },
+  },
+  'membrane-keypad': {
+    kind: 'keypad',
+    reflect: (c) => ({ kind: 'keypad', key: (c as MembraneKeypad).keyLabel }),
+    applyProp: (c, name, v) => {
+      if (name !== 'key') return false;
+      (c as MembraneKeypad).setKey(String(v ?? ''));
+      return true;
+    },
+  },
+  hx711: {
+    kind: 'loadcell',
+    reflect: (c) => ({ kind: 'loadcell', raw: (c as Hx711).rawValue }),
+    applyProp: (c, name, v) => {
+      if (name !== 'raw') return false;
+      (c as Hx711).setRaw(Number(v));
+      return true;
+    },
+  },
+  'rotary-dialer': {
+    kind: 'dialer',
+    reflect: (c) => ({ kind: 'dialer', digit: (c as RotaryDialer).lastDigit }),
+    applyProp: (c, name, v) => {
+      if (name !== 'digit') return false;
+      (c as RotaryDialer).dial(Number(v));
+      return true;
     },
   },
 };

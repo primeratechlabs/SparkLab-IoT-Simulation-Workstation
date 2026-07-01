@@ -47,6 +47,10 @@ export type ComponentKind =
   | 'dipswitch'
   | 'ledbar'
   | 'encoder'
+  | 'stepper'
+  | 'keypad'
+  | 'loadcell'
+  | 'dialer'
   | 'wire';
 
 export interface NetlistComponent {

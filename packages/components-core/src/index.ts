@@ -29,4 +29,8 @@ export * from './led-bar-graph.js';
 export * from './dip-switch.js';
 export * from './joystick.js';
 export * from './rotary-encoder.js';
+export * from './stepper.js';
+export * from './membrane-keypad.js';
+export * from './hx711.js';
+export * from './rotary-dialer.js';
 export * from './svg-sanitizer.js';

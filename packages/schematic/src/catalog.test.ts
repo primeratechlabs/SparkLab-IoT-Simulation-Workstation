@@ -46,6 +46,10 @@ const KNOWN_KINDS = new Set([
   'dipswitch',
   'ledbar',
   'encoder',
+  'stepper',
+  'keypad',
+  'loadcell',
+  'dialer',
 ]);
 
 function ctx(over: Partial<BuildContext>): BuildContext {
@@ -53,8 +57,8 @@ function ctx(over: Partial<BuildContext>): BuildContext {
 }
 
 describe('catalog — integrity', () => {
-  it('registers the 36 built-in components, each well-formed', () => {
-    expect(CATALOG_TYPES).toHaveLength(36);
+  it('registers the 41 built-in components, each well-formed', () => {
+    expect(CATALOG_TYPES).toHaveLength(41);
     for (const type of CATALOG_TYPES) {
       const e = catalogEntry(type)!;
       expect(e.type).toBe(type); // key matches entry.type
