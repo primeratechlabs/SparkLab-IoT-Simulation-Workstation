@@ -38,8 +38,8 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
-    "happy-dom": "^15.11.7",
-    "vite": "^6.0.7",
+    "happy-dom": "^21.0.4",
+    "vite": "^6.4.5",
     "vite-plugin-pwa": "^1.3.0",
     "vue-tsc": "^2.2.0",
     "workbox-window": "^7.4.1"
